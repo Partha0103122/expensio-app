@@ -1,10 +1,8 @@
-const CACHE = 'expensio-v1';
+const CACHE = 'expensio-v2';
 const ASSETS = [
   '/Expensio/',
   '/Expensio/index.html',
   '/Expensio/manifest.json',
-  '/Expensio/icons/icon-192.png',
-  '/Expensio/icons/icon-512.png',
 ];
 
 self.addEventListener('install', e => {
@@ -22,9 +20,8 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
-  // Network first for API calls, cache first for app assets
   const url = new URL(e.request.url);
-  if (url.hostname.includes('googleapis') || url.hostname.includes('exchangerate') || url.hostname.includes('accounts.google')) {
+  if (url.hostname.includes('googleapis') || url.hostname.includes('exchangerate') || url.hostname.includes('accounts.google') || url.hostname.includes('fonts.googleapis')) {
     e.respondWith(fetch(e.request).catch(() => new Response('', { status: 503 })));
     return;
   }
