@@ -225,7 +225,7 @@
         <span id="sync-icon">📊</span>
         <span id="sync-label">Sheets</span>
       </div>
-      <div class="sync-btn" id="reload-btn" onclick="resetAndReload()" style="display:none;font-size:14px" title="Re-load from Sheets">⟳</div>
+      <div class="sync-btn" id="refresh-btn" onclick="refreshFromSheets()" style="display:none" title="Refresh from Sheets"><span id="refresh-icon">🔄</span> <span id="refresh-label">Refresh</span></div>
     </div>
   </div>
   <div class="nav" id="main-nav" style="display:none">
@@ -543,7 +543,33 @@ async function resetAndReload() {
 // Show reload button once signed in
 function showHeaderBtns() {
   document.getElementById('sync-btn').style.display = 'flex';
-  document.getElementById('reload-btn').style.display = 'flex';
+  document.getElementById('refresh-btn').style.display = 'flex';
+      <div class="sync-btn" id="refresh-btn" onclick="refreshFromSheets()" style="display:none" title="Refresh from Sheets"><span id="refresh-icon">🔄</span> <span id="refresh-label">Refresh</span></div>
+}
+
+async function refreshFromSheets() {
+  if (!state.accessToken) { toast('Please sign in first'); return; }
+  if (!navigator.onLine) { toast('📵 Offline — cannot refresh'); return; }
+  const btn = document.getElementById('refresh-btn');
+  const icon = document.getElementById('refresh-icon');
+  const label = document.getElementById('refresh-label');
+  if (icon) icon.style.animation = 'spin .8s linear infinite';
+  if (label) label.textContent = 'Loading…';
+  if (btn) btn.className = 'sync-btn syncing';
+  try {
+    await initSheet();
+    await loadFromSheets();
+    if (icon) icon.style.animation = '';
+    if (icon) icon.textContent = '🔄';
+    if (label) label.textContent = 'Refresh';
+    if (btn) btn.className = 'sync-btn synced';
+    setTimeout(() => { if(btn) btn.className = 'sync-btn'; }, 2000);
+  } catch(e) {
+    if (icon) icon.style.animation = '';
+    if (label) label.textContent = 'Refresh';
+    if (btn) btn.className = 'sync-btn error';
+    toast('⚠️ Refresh failed');
+  }
 }
 
 // ── Currency ──────────────────────────────────────────────────
@@ -822,18 +848,19 @@ function clearForm() {
 
 // ── LIST TAB ──────────────────────────────────────────────────
 function renderList() {
+  const placeholder = state.searchMode === 'store' ? 'Search stores…' : state.searchMode === 'cat' ? 'Search categories…' : 'Search items…';
   return `
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
-    <input id="search-input" placeholder="Search…" oninput="liveSearch()" autocomplete="off">
+    <input id="search-input" placeholder="${placeholder}" oninput="liveSearch()" autocomplete="off">
   </div>
   <div class="filter-row">
     <button class="stab ${state.searchMode==='item'?'active':''}" onclick="setSearchMode('item')">By Item</button>
     <button class="stab ${state.searchMode==='store'?'active':''}" onclick="setSearchMode('store')">By Store</button>
     <button class="stab ${state.searchMode==='cat'?'active':''}" onclick="setSearchMode('cat')">By Category</button>
   </div>
-  <div class="card" id="list-results">
-    ${renderExpenseItems(state.expenses.slice().reverse())}
+  <div id="list-results">
+    ${renderGroupedList('')}
   </div>`;
 }
 
@@ -841,18 +868,72 @@ function setSearchMode(mode) { state.searchMode = mode; render(); }
 
 function liveSearch() {
   const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
-  let filtered = state.expenses.slice().reverse();
-  if (q) filtered = filtered.filter(e => {
-    if (state.searchMode === 'item') return e.name.toLowerCase().includes(q);
-    if (state.searchMode === 'store') return e.store.toLowerCase().includes(q);
-    if (state.searchMode === 'cat') {
-      const cat = state.categories.find(c => c.id === e.catId);
-      return cat ? cat.name.toLowerCase().includes(q) : false;
-    }
-    return true;
-  });
   const el = document.getElementById('list-results');
-  if (el) el.innerHTML = renderExpenseItems(filtered);
+  if (el) el.innerHTML = renderGroupedList(q);
+}
+
+function renderGroupedList(q) {
+  let exps = state.expenses.slice().reverse();
+
+  // Filter by query
+  if (q) {
+    exps = exps.filter(e => {
+      if (state.searchMode === 'item') return e.name.toLowerCase().includes(q);
+      if (state.searchMode === 'store') return e.store.toLowerCase().includes(q);
+      if (state.searchMode === 'cat') {
+        const cat = state.categories.find(c => c.id === e.catId);
+        return cat ? cat.name.toLowerCase().includes(q) : false;
+      }
+      return true;
+    });
+  }
+
+  if (!exps.length) return `<div class="card"><div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses found</div></div></div>`;
+
+  // Group by store or category
+  if (state.searchMode === 'store') {
+    const groups = {};
+    exps.forEach(e => {
+      const key = e.store || 'No store';
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(e);
+    });
+    // Sort groups by most recent expense date
+    return Object.entries(groups)
+      .sort((a,b) => b[1][0].date.localeCompare(a[1][0].date))
+      .map(([store, items]) => {
+        const total = items.reduce((a,e) => a+e.amtEur, 0);
+        const lastDate = fmtDate(items[0].date);
+        return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center">
+          <span>🏪 ${escHtml(store)}</span>
+          <span style="font-family:var(--fm)">${fmtEur(total)} · last ${lastDate}</span>
+        </div>
+        <div class="card">${renderExpenseItems(items)}</div>`;
+      }).join('');
+  }
+
+  if (state.searchMode === 'cat') {
+    const groups = {};
+    exps.forEach(e => {
+      const cat = state.categories.find(c => c.id === e.catId) || {name:'Other', emoji:'📦'};
+      const key = cat.name;
+      if (!groups[key]) groups[key] = {cat, items:[]};
+      groups[key].items.push(e);
+    });
+    return Object.entries(groups)
+      .sort((a,b) => b[1].items.reduce((s,e)=>s+e.amtEur,0) - a[1].items.reduce((s,e)=>s+e.amtEur,0))
+      .map(([name, {cat, items}]) => {
+        const total = items.reduce((a,e) => a+e.amtEur, 0);
+        return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center">
+          <span>${cat.emoji} ${escHtml(name)}</span>
+          <span style="font-family:var(--fm)">${fmtEur(total)}</span>
+        </div>
+        <div class="card">${renderExpenseItems(items)}</div>`;
+      }).join('');
+  }
+
+  // Default: by item (flat list)
+  return `<div class="card">${renderExpenseItems(exps)}</div>`;
 }
 
 function renderExpenseItems(exps) {
