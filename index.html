@@ -1241,8 +1241,9 @@ function clearAll() {
 // ── Init ──────────────────────────────────────────────────────
 fetchRate();
 initGoogleAuth();
+// Unregister any existing service workers to prevent caching issues
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+  navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
 }
 </script>
 </body>
