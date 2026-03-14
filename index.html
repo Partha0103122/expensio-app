@@ -225,6 +225,7 @@
         <span id="sync-icon">📊</span>
         <span id="sync-label">Sheets</span>
       </div>
+      <div class="sync-btn" id="reload-btn" onclick="resetAndReload()" style="display:none;font-size:14px" title="Re-load from Sheets">⟳</div>
     </div>
   </div>
   <div class="nav" id="main-nav" style="display:none">
@@ -341,7 +342,7 @@ function signIn() {
 
 function onSignedIn() {
   document.getElementById('main-nav').style.display = 'flex';
-  document.getElementById('sync-btn').style.display = 'flex';
+  showHeaderBtns();
   toast(`✓ Welcome, ${state.userName || 'there'}!`);
   render();
   // Init sheet, load all expenses from Sheets, then sync any pending local entries
@@ -387,30 +388,28 @@ async function sheetsRequest(url, method='GET', body=null, retry=true) {
 
 async function initSheet() {
   if (!state.accessToken) return;
+  updateSyncBtn('syncing', '⟳ Finding…');
   try {
-    if (state.sheetId) {
-      // Verify it still exists
-      try {
-        await sheetsRequest(`${SHEETS_API}/${state.sheetId}?fields=spreadsheetId`);
-        updateSyncBtn('synced', '✓ Sheets');
-        return;
-      } catch(e) {
-        state.sheetId = null;
-      }
+    // Search Drive for existing sheet by name — ensures all devices use same sheet
+    const search = await sheetsRequest(
+      `https://www.googleapis.com/drive/v3/files?q=name%3D%22${encodeURIComponent(SHEET_TITLE)}%22%20and%20mimeType%3D%22application%2Fvnd.google-apps.spreadsheet%22%20and%20trashed%3Dfalse&fields=files(id%2Cname)&orderBy=createdTime`
+    );
+    if (search.files && search.files.length > 0) {
+      state.sheetId = search.files[0].id;
+      save();
+      updateSyncBtn('synced', '✓ Sheets');
+      return;
     }
-    // Create new sheet
+    // No existing sheet — create one
     updateSyncBtn('syncing', '⟳ Creating…');
     const sheet = await sheetsRequest(SHEETS_API, 'POST', {
       properties: { title: SHEET_TITLE },
       sheets: [{
         properties: { title: 'Expenses' },
-        data: [{
-          startRow: 0, startColumn: 0,
-          rowData: [{
-            values: [
-              'ID','Date','Item','Store','Category','Amount (EUR)','Amount (INR)','Original Amount','Original Currency','Qty','Unit Price','Is Loan EMI','Notes'
-            ].map(v => ({ userEnteredValue: { stringValue: v }, userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.145, green: 0.388, blue: 0.922 } } }))
-          }]
+        data: [{ startRow: 0, startColumn: 0,
+          rowData: [{ values: [
+            'ID','Date','Item','Store','Category','Amount (EUR)','Amount (INR)','Original Amount','Original Currency','Qty','Unit Price','Is Loan EMI','Notes'
+          ].map(v => ({ userEnteredValue: { stringValue: v }, userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.145, green: 0.388, blue: 0.922 } } })) }]
         }]
       }]
     });
@@ -419,8 +418,9 @@ async function initSheet() {
     updateSyncBtn('synced', '✓ Sheets');
     toast('📊 Google Sheet created!');
   } catch(e) {
+    console.error('initSheet error:', e);
     updateSyncBtn('error', '⚠ Error');
-    toast('⚠️ Could not create sheet');
+    toast('⚠️ Could not connect to Sheet');
   }
 }
 
@@ -526,6 +526,24 @@ function updateSyncBtn(state_, label) {
   if (lbl) lbl.textContent = label;
   if (ico) ico.className = state_ === 'syncing' ? 'spinning' : '';
   if (ico && state_ !== 'syncing') ico.textContent = state_ === 'synced' ? '✓' : state_ === 'error' ? '⚠' : '📊';
+}
+
+// ── Reset & Reload ────────────────────────────────────────────
+async function resetAndReload() {
+  // Clear stored sheetId so initSheet searches Drive fresh
+  state.sheetId = null;
+  state.expenses = [];
+  state.pendingSync = [];
+  save();
+  toast('🔄 Re-connecting to Sheet…');
+  await initSheet();
+  await loadFromSheets();
+}
+
+// Show reload button once signed in
+function showHeaderBtns() {
+  document.getElementById('sync-btn').style.display = 'flex';
+  document.getElementById('reload-btn').style.display = 'flex';
 }
 
 // ── Currency ──────────────────────────────────────────────────
