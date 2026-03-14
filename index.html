@@ -6,6 +6,7 @@
 <title>Expensio</title>
 <meta name="description" content="Personal expense tracker with Google Sheets sync">
 <meta name="theme-color" content="#2563EB">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Expensio">
@@ -36,7 +37,6 @@
   body{font-family:var(--ff);background:var(--bg);color:var(--txt);font-size:14px;min-height:100vh;-webkit-tap-highlight-color:transparent}
   .app{display:flex;flex-direction:column;height:100vh;max-width:680px;margin:0 auto;background:var(--bg)}
 
-  /* Header */
   .header{background:var(--card);border-bottom:0.5px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;position:sticky;top:0;z-index:10}
   .logo{font-size:18px;font-weight:600;letter-spacing:-0.3px}
   .logo span{color:var(--accent)}
@@ -47,55 +47,41 @@
   .rate-dot.stale{background:#f59e0b}
   .rate-dot.loading{background:#94a3b8;animation:pulse 1s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  @keyframes spin{to{transform:rotate(360deg)}}
 
-  /* Sync button */
   .sync-btn{display:flex;align-items:center;gap:5px;font-size:11px;padding:5px 10px;border-radius:20px;border:0.5px solid var(--border);background:var(--bg);cursor:pointer;color:var(--txt2);font-family:var(--ff);transition:all .15s}
   .sync-btn:hover{background:#e8e7e3}
   .sync-btn.syncing{color:var(--accent);border-color:var(--accent)}
   .sync-btn.synced{color:var(--success);border-color:var(--success)}
   .sync-btn.error{color:var(--danger);border-color:var(--danger)}
-  @keyframes spin{to{transform:rotate(360deg)}}
   .spinning{display:inline-block;animation:spin .8s linear infinite}
 
-  /* Nav */
   .nav{background:var(--card);border-bottom:0.5px solid var(--border);display:flex;padding:0 8px;flex-shrink:0;overflow-x:auto}
   .nav::-webkit-scrollbar{display:none}
   .nav-btn{padding:11px 12px;font-size:13px;font-weight:500;color:var(--txt2);border:none;background:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;font-family:var(--ff);white-space:nowrap}
   .nav-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
   .nav-btn:hover:not(.active){color:var(--txt)}
 
-  /* Content */
   .content{flex:1;overflow-y:auto;padding:16px 16px 80px;-webkit-overflow-scrolling:touch}
 
-  /* Cards */
   .card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad-lg);padding:16px;margin-bottom:12px}
   .card-title{font-size:13px;font-weight:500;color:var(--txt2);margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
 
-  /* Summary row */
   .summary-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:12px}
   .metric{background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:12px}
   .metric-label{font-size:10px;color:var(--txt3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.4px}
   .metric-val{font-size:18px;font-weight:600;font-family:var(--fm);letter-spacing:-0.5px}
   .metric-sub{font-size:10px;color:var(--txt3);margin-top:2px;font-family:var(--fm)}
 
-  /* Form */
   .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .form-group{display:flex;flex-direction:column;gap:5px}
   .form-group.full{grid-column:1/-1}
   label{font-size:12px;color:var(--txt2);font-weight:500}
-  input,select,textarea{
-    font-family:var(--ff);font-size:14px;
-    border:0.5px solid var(--border2);
-    border-radius:var(--rad);padding:10px 11px;
-    background:var(--card);color:var(--txt);width:100%;
-    transition:border-color .15s,box-shadow .15s;outline:none;
-    -webkit-appearance:none;appearance:none
-  }
+  input,select,textarea{font-family:var(--ff);font-size:14px;border:0.5px solid var(--border2);border-radius:var(--rad);padding:10px 11px;background:var(--card);color:var(--txt);width:100%;transition:border-color .15s,box-shadow .15s;outline:none;-webkit-appearance:none;appearance:none}
   select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b6b66'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
   input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
   input[type="color"]{padding:3px 5px;height:40px;cursor:pointer}
-  input[type="number"]::-webkit-outer-spin-button,
-  input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input[type="number"]::-webkit-outer-spin-button,input[type="number"]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 
   .currency-row{display:flex;gap:8px;align-items:stretch}
   .currency-row input{flex:1}
@@ -108,7 +94,6 @@
   .qty-sep{color:var(--txt3);font-size:13px;flex-shrink:0}
   .preview-text{font-size:12px;color:var(--txt3);margin-top:3px;font-family:var(--fm);min-height:16px}
 
-  /* Buttons */
   .btn{font-family:var(--ff);font-size:13px;font-weight:500;padding:10px 18px;border-radius:var(--rad);cursor:pointer;transition:all .15s;border:none;display:inline-flex;align-items:center;gap:6px}
   .btn-primary{background:var(--accent);color:#fff}
   .btn-primary:hover{background:#1d4ed8}
@@ -117,7 +102,6 @@
   .btn-ghost:hover{background:var(--bg)}
   .btn-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
 
-  /* Expense list */
   .expense-item{display:flex;align-items:flex-start;gap:10px;padding:11px 0;border-bottom:0.5px solid var(--border)}
   .expense-item:last-child{border-bottom:none}
   .cat-dot{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px}
@@ -130,7 +114,6 @@
   .del-btn{color:var(--txt3);font-size:11px;cursor:pointer;margin-top:3px;padding:2px 4px;border-radius:4px;transition:background .15s;display:inline-block}
   .del-btn:hover{background:rgba(220,38,38,.1);color:var(--danger)}
 
-  /* Search */
   .search-wrap{position:relative;margin-bottom:10px}
   .search-wrap input{padding-left:36px}
   .search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--txt3);font-size:15px;pointer-events:none}
@@ -138,7 +121,6 @@
   .stab{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;border:0.5px solid var(--border2);background:none;cursor:pointer;color:var(--txt2);font-family:var(--ff);transition:all .15s}
   .stab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
-  /* Analytics */
   .period-tabs{display:flex;gap:4px;background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad);padding:3px;margin-bottom:14px}
   .ptab{flex:1;padding:7px;text-align:center;font-size:12px;font-weight:500;border-radius:7px;cursor:pointer;color:var(--txt2);border:none;background:none;font-family:var(--ff);transition:all .15s}
   .ptab.active{background:var(--accent);color:#fff}
@@ -150,7 +132,6 @@
   .bar-fill{height:100%;border-radius:5px;display:flex;align-items:center;padding:0 7px;font-size:10px;font-weight:600;color:#fff;min-width:4px;transition:width .5s ease}
   .bar-val{font-size:11px;color:var(--txt2);font-family:var(--fm);width:58px;text-align:right;flex-shrink:0}
 
-  /* Categories */
   .cat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
   .cat-card{background:var(--bg);border-radius:var(--rad);padding:10px;display:flex;align-items:center;gap:8px;position:relative;border:0.5px solid transparent;transition:border-color .15s}
   .cat-card:hover{border-color:var(--border2)}
@@ -158,7 +139,6 @@
   .cat-card:hover .cat-del{opacity:1}
   .cat-name{font-size:12px;font-weight:500;line-height:1.2}
 
-  /* Loan */
   .loan-hero{background:#1e40af;border-radius:var(--rad-lg);padding:20px;margin-bottom:12px;color:#fff}
   .loan-hero-title{font-size:13px;font-weight:500;opacity:.75;margin-bottom:4px}
   .loan-hero-amt{font-size:32px;font-weight:600;font-family:var(--fm);letter-spacing:-1px;margin-bottom:2px}
@@ -171,11 +151,9 @@
   .note-box{background:#fffbeb;border:0.5px solid #fbbf24;border-radius:var(--rad);padding:10px 14px;font-size:13px;color:#92400e;display:flex;align-items:flex-start;gap:8px;margin-top:10px;line-height:1.5}
   .note-icon{font-size:16px;flex-shrink:0;margin-top:1px}
 
-  /* Toast */
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a18;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:500;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
-  /* Empty */
   .empty{text-align:center;padding:48px 20px;color:var(--txt3)}
   .empty-icon{font-size:36px;margin-bottom:10px}
   .empty-text{font-size:14px;line-height:1.5}
@@ -183,23 +161,7 @@
   .section-divider{font-size:11px;color:var(--txt3);text-transform:uppercase;letter-spacing:.6px;margin:16px 0 8px;font-weight:500}
   .emi-tag{display:inline-flex;align-items:center;font-size:10px;background:#dbeafe;color:#1d4ed8;border-radius:8px;padding:1px 7px;font-weight:500;margin-left:4px}
   hr.divider{border:none;border-top:0.5px solid var(--border);margin:14px 0}
-
-  /* Google Sign In */
-  .signin-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:40px 24px;text-align:center;gap:16px}
-  .signin-logo{font-size:48px;margin-bottom:8px}
-  .signin-title{font-size:22px;font-weight:600;letter-spacing:-0.5px}
-  .signin-title span{color:var(--accent)}
-  .signin-sub{font-size:14px;color:var(--txt2);line-height:1.6;max-width:300px}
-  .google-btn{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--border2);border-radius:var(--rad);padding:12px 20px;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--ff);color:var(--txt);transition:all .15s;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-  .google-btn:hover{box-shadow:0 2px 8px rgba(0,0,0,.12);transform:translateY(-1px)}
-  .google-btn svg{width:20px;height:20px;flex-shrink:0}
-  .signin-features{display:flex;flex-direction:column;gap:8px;text-align:left;background:var(--card);border:0.5px solid var(--border);border-radius:var(--rad-lg);padding:16px;width:100%;max-width:320px}
-  .signin-feature{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--txt2)}
-
-  /* Sheets status */
   .sheets-info{background:#f0fdf4;border:0.5px solid #86efac;border-radius:var(--rad);padding:10px 14px;font-size:12px;color:#166534;display:flex;align-items:center;gap:8px;margin-bottom:12px}
-
-  /* Offline badge */
   .offline-banner{background:#fef2f2;border:0.5px solid #fca5a5;border-radius:var(--rad);padding:8px 14px;font-size:12px;color:#991b1b;text-align:center;margin-bottom:10px;display:none}
   .offline-banner.show{display:block}
 
@@ -219,35 +181,39 @@
     <div class="header-right">
       <div class="rate-badge" onclick="fetchRate()" title="Tap to refresh">
         <div class="rate-dot loading" id="rate-dot"></div>
-        <span id="rate-display">Loading…</span>
+        <span id="rate-display">Loading...</span>
       </div>
-      <div class="sync-btn" id="sync-btn" onclick="syncToSheets()" style="display:none" title="Sync to Google Sheets">
+      <div class="sync-btn" id="refresh-btn" onclick="refreshFromSheets()" title="Refresh from Sheets">
+        <span id="refresh-icon">🔄</span>
+        <span id="refresh-label">Refresh</span>
+      </div>
+      <div class="sync-btn" id="sync-btn" onclick="syncToSheets()" title="Sync to Google Sheets">
         <span id="sync-icon">📊</span>
-        <span id="sync-label">Sheets</span>
+        <span id="sync-label">Sync</span>
       </div>
-      <div class="sync-btn" id="refresh-btn" onclick="refreshFromSheets()" style="display:none" title="Refresh from Sheets"><span id="refresh-icon">🔄</span> <span id="refresh-label">Refresh</span></div>
     </div>
   </div>
-  <div class="nav" id="main-nav" style="display:none">
+  <div class="nav">
     <button class="nav-btn active" onclick="switchTab('add')">➕ Add</button>
     <button class="nav-btn" onclick="switchTab('list')">🧾 Expenses</button>
     <button class="nav-btn" onclick="switchTab('analytics')">📊 Analytics</button>
     <button class="nav-btn" onclick="switchTab('loans')">🏦 Loans</button>
     <button class="nav-btn" onclick="switchTab('settings')">🏷 Categories</button>
   </div>
-  <div class="content" id="content">
-    <!-- Sign in screen shown initially -->
-  </div>
+  <div class="content" id="content"></div>
 </div>
 <div class="toast" id="toast"></div>
 
-<!-- Google Identity Services -->
-<script src="https://accounts.google.com/gsi/client" async></script>
-
 <script>
-const CLIENT_ID = '883780949806-5veenaucv4s5b6futlpmmn3glln942hf.apps.googleusercontent.com';
-const SCOPES = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.file';
-const SHEET_TITLE = 'Expensio Expenses';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqT1_N2PIaKl33sy06HzfCnA1l_38QHuODCy7gP7eBJsYEfu2NWYuHSm_4Dhs_DcTEqQ/exec';
+const API_KEY = 'AIzaSyBRQDgZuy--RdUyUIntov-WR1-Tx9ZrQjM';
+const SHEET_ID = '14ydlGdL2X2fgD5T5oHbKjdZIp4KsZz90i5fTQwBs82M';
+const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
+
+// Unregister any old service workers
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
+}
 
 // ── State ─────────────────────────────────────────────────────
 let state = {
@@ -269,307 +235,115 @@ let state = {
   searchMode: 'item',
   analyticsPeriod: 'month',
   loanMonthlyINR: 0,
-  accessToken: null,
-  userEmail: null,
-  userName: null,
-  sheetId: null,
-  lastSynced: null,
   pendingSync: [],
 };
 
-// Load from localStorage
 try {
-  const saved = localStorage.getItem('expensio_v2');
+  const saved = localStorage.getItem('expensio_v3');
   if (saved) {
     const s = JSON.parse(saved);
     state.expenses = s.expenses || [];
     state.categories = s.categories || state.categories;
     state.loanMonthlyINR = s.loanMonthlyINR || 0;
-    state.sheetId = s.sheetId || null;
     state.pendingSync = s.pendingSync || [];
   }
 } catch(e) {}
 
 function save() {
   try {
-    localStorage.setItem('expensio_v2', JSON.stringify({
+    localStorage.setItem('expensio_v3', JSON.stringify({
       expenses: state.expenses,
       categories: state.categories,
       loanMonthlyINR: state.loanMonthlyINR,
-      sheetId: state.sheetId,
       pendingSync: state.pendingSync,
     }));
   } catch(e) {}
 }
 
-// ── Offline detection ─────────────────────────────────────────
-window.addEventListener('online', () => { document.getElementById('offline-banner')?.classList.remove('show'); if(state.pendingSync.length) syncToSheets(); });
-window.addEventListener('offline', () => { document.getElementById('offline-banner')?.classList.add('show'); });
-
-// ── Auth ──────────────────────────────────────────────────────
-let tokenClient;
-
-function initGoogleAuth() {
-  if (typeof google === 'undefined') {
-    setTimeout(initGoogleAuth, 500);
-    return;
-  }
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: async (resp) => {
-      if (resp.error) { toast('⚠️ Sign in failed'); return; }
-      state.accessToken = resp.access_token;
-      // Get user info - non blocking, proceed even if it fails
-      fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-        headers: { Authorization: `Bearer ${state.accessToken}` }
-      }).then(r => r.json()).then(u => {
-        state.userEmail = u.email;
-        state.userName = u.given_name || u.name || 'User';
-        const nav = document.getElementById('main-nav');
-        if(nav) render();
-      }).catch(() => {});
-      await onSignedIn();
-    },
-  });
-  // Show sign in screen
-  renderSignIn();
-}
-
-function signIn() {
-  tokenClient.requestAccessToken({ prompt: '' });
-}
-
-function onSignedIn() {
-  document.getElementById('main-nav').style.display = 'flex';
-  showHeaderBtns();
-  toast(`✓ Welcome, ${state.userName || 'there'}!`);
-  render();
-  // Init sheet, load all expenses from Sheets, then sync any pending local entries
-  initSheet().then(() => loadFromSheets()).then(() => {
-    if (state.pendingSync.length > 0) syncToSheets();
-  });
-}
-
-// ── Google Sheets ─────────────────────────────────────────────
-const SHEETS_API = 'https://sheets.googleapis.com/v4/spreadsheets';
-const DRIVE_API = 'https://www.googleapis.com/drive/v3';
-
-async function sheetsRequest(url, method='GET', body=null, retry=true) {
-  const opts = {
-    method,
-    headers: {
-      Authorization: `Bearer ${state.accessToken}`,
-      'Content-Type': 'application/json',
-    },
-  };
-  if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(url, opts);
-  if (r.status === 401 && retry) {
-    // Token expired — get a fresh one silently then retry
-    await new Promise((resolve, reject) => {
-      tokenClient.requestAccessToken({ prompt: '' });
-      const orig = tokenClient.callback;
-      tokenClient.callback = async (resp) => {
-        tokenClient.callback = orig;
-        if (resp.error) { reject(new Error(resp.error)); return; }
-        state.accessToken = resp.access_token;
-        resolve();
-      };
-    });
-    return sheetsRequest(url, method, body, false);
-  }
-  if (!r.ok) {
-    const err = await r.json();
-    throw new Error(err.error?.message || 'Sheets API error');
-  }
-  return r.json();
-}
-
-async function initSheet() {
-  if (!state.accessToken) return;
-  updateSyncBtn('syncing', '⟳ Finding…');
-  try {
-    // Search Drive for existing sheet by name — ensures all devices use same sheet
-    const search = await sheetsRequest(
-      `https://www.googleapis.com/drive/v3/files?q=name%3D%22${encodeURIComponent(SHEET_TITLE)}%22%20and%20mimeType%3D%22application%2Fvnd.google-apps.spreadsheet%22%20and%20trashed%3Dfalse&fields=files(id%2Cname)&orderBy=createdTime`
-    );
-    if (search.files && search.files.length > 0) {
-      state.sheetId = search.files[0].id;
-      save();
-      updateSyncBtn('synced', '✓ Sheets');
-      return;
-    }
-    // No existing sheet — create one
-    updateSyncBtn('syncing', '⟳ Creating…');
-    const sheet = await sheetsRequest(SHEETS_API, 'POST', {
-      properties: { title: SHEET_TITLE },
-      sheets: [{
-        properties: { title: 'Expenses' },
-        data: [{ startRow: 0, startColumn: 0,
-          rowData: [{ values: [
-            'ID','Date','Item','Store','Category','Amount (EUR)','Amount (INR)','Original Amount','Original Currency','Qty','Unit Price','Is Loan EMI','Notes'
-          ].map(v => ({ userEnteredValue: { stringValue: v }, userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 0.145, green: 0.388, blue: 0.922 } } })) }]
-        }]
-      }]
-    });
-    state.sheetId = sheet.spreadsheetId;
-    save();
-    updateSyncBtn('synced', '✓ Sheets');
-    toast('📊 Google Sheet created!');
-  } catch(e) {
-    console.error('initSheet error:', e);
-    updateSyncBtn('error', '⚠ Error');
-    toast('⚠️ Could not connect to Sheet');
-  }
-}
-
-async function appendToSheet(expenses) {
-  if (!state.sheetId || !state.accessToken) return false;
-  const rows = expenses.map(e => {
-    const cat = state.categories.find(c => c.id === e.catId);
-    const inrAmt = state.eurInr ? Math.round(e.amtEur * state.eurInr) : '';
-    return [
-      e.id, e.date, e.name, e.store||'',
-      cat ? cat.name : 'Other',
-      e.amtEur.toFixed(2), inrAmt,
-      e.originalAmt, e.originalCur,
-      e.qty||'', e.unitPrice||'',
-      e.isLoanEMI ? 'Yes' : 'No',
-      e.notes||''
-    ];
-  });
-  await sheetsRequest(
-    `${SHEETS_API}/${state.sheetId}/values/Expenses!A:M:append?valueInputOption=USER_ENTERED`,
-    'POST',
-    { values: rows }
-  );
-  return true;
-}
-
+// ── Sheets (no OAuth) ─────────────────────────────────────────
 async function loadFromSheets() {
-  // Small delay to ensure token is ready
-  await new Promise(r => setTimeout(r, 500));
-  if (!state.sheetId || !state.accessToken) return;
-  updateSyncBtn('syncing', '⧳ Loading…');
+  updateSyncBtn('refresh-btn','refresh-icon','refresh-label','syncing','⟳','Loading...');
   try {
-    const data = await sheetsRequest(
-      `${SHEETS_API}/${state.sheetId}/values/Expenses!A2:M?majorDimension=ROWS`
-    );
+    const r = await fetch(`${SHEETS_API}/${SHEET_ID}/values/Expenses!A2:M?key=${API_KEY}`);
+    const data = await r.json();
     const rows = data.values || [];
-    if (!rows.length) { updateSyncBtn('synced', '✓ Synced'); return; }
-
-    // Parse rows: ID,Date,Item,Store,Category,AmtEUR,AmtINR,OrigAmt,OrigCur,Qty,UnitPrice,IsLoanEMI,Notes
+    if (!rows.length) { updateSyncBtn('refresh-btn','refresh-icon','refresh-label','','🔄','Refresh'); return; }
     const sheetExpenses = rows.map(r => {
-      const catName = r[4] || 'Other';
-      const cat = state.categories.find(c => c.name === catName) || state.categories.find(c => c.id === 'other');
+      const cat = state.categories.find(c => c.name === (r[4]||'Other')) || state.categories.find(c => c.id === 'other');
       return {
         id: parseInt(r[0]) || Date.now() + Math.random(),
-        date: r[1] || '',
-        name: r[2] || '',
-        store: r[3] || '',
+        date: r[1]||'', name: r[2]||'', store: r[3]||'',
         catId: cat ? cat.id : 'other',
-        amtEur: parseFloat(r[5]) || 0,
-        originalAmt: parseFloat(r[7]) || 0,
-        originalCur: r[8] || 'EUR',
-        qty: parseFloat(r[9]) || 0,
-        unitPrice: parseFloat(r[10]) || 0,
-        isLoanEMI: r[11] === 'Yes',
-        notes: r[12] || '',
+        amtEur: parseFloat(r[5])||0,
+        originalAmt: parseFloat(r[7])||0,
+        originalCur: r[8]||'EUR',
+        qty: parseFloat(r[9])||0,
+        unitPrice: parseFloat(r[10])||0,
+        isLoanEMI: r[11]==='Yes',
+        notes: r[12]||'',
       };
     }).filter(e => e.name && e.amtEur);
-
-    // Merge: sheet is source of truth — replace local with sheet data, keep pending local additions
-    const pendingExpenses = state.expenses.filter(e => state.pendingSync.includes(e.id));
+    const pendingExps = state.expenses.filter(e => state.pendingSync.includes(e.id));
     const sheetIds = new Set(sheetExpenses.map(e => String(e.id)));
-    // Add pending local ones not yet in sheet
-    const newLocal = pendingExpenses.filter(e => !sheetIds.has(String(e.id)));
+    const newLocal = pendingExps.filter(e => !sheetIds.has(String(e.id)));
     state.expenses = [...sheetExpenses, ...newLocal];
     save();
     render();
-    updateSyncBtn('synced', '✓ Synced');
-    toast(`✓ Loaded ${sheetExpenses.length} expenses from Sheets`);
+    updateSyncBtn('refresh-btn','refresh-icon','refresh-label','synced','✓','Refreshed');
+    toast(`✓ Loaded ${sheetExpenses.length} expenses`);
+    setTimeout(() => updateSyncBtn('refresh-btn','refresh-icon','refresh-label','','🔄','Refresh'), 2000);
   } catch(e) {
-    console.error('loadFromSheets error:', e);
-    updateSyncBtn('synced', '✓ Sheets');
+    console.error('loadFromSheets:', e);
+    updateSyncBtn('refresh-btn','refresh-icon','refresh-label','error','⚠','Error');
+    toast('⚠️ Could not load from Sheets');
   }
 }
 
 async function syncToSheets() {
-  if (!state.accessToken) { toast('Please sign in first'); return; }
-  if (!navigator.onLine) { toast('📵 Offline — will sync when connected'); return; }
+  if (!navigator.onLine) { toast('📵 Offline'); return; }
   if (!state.pendingSync.length) { toast('✓ All synced'); return; }
-
-  updateSyncBtn('syncing', '⟳ Syncing…');
+  updateSyncBtn('sync-btn','sync-icon','sync-label','syncing','⟳','Syncing...');
   try {
-    if (!state.sheetId) await initSheet();
     const toSync = state.expenses.filter(e => state.pendingSync.includes(e.id));
-    if (toSync.length) {
-      await appendToSheet(toSync);
-      state.pendingSync = state.pendingSync.filter(id => !toSync.map(e=>e.id).includes(id));
+    const rows = toSync.map(e => {
+      const cat = state.categories.find(c => c.id === e.catId);
+      const inrAmt = state.eurInr ? Math.round(e.amtEur * state.eurInr) : '';
+      return [e.id, e.date, e.name, e.store||'', cat?cat.name:'Other',
+        e.amtEur.toFixed(2), inrAmt, e.originalAmt, e.originalCur,
+        e.qty||'', e.unitPrice||'', e.isLoanEMI?'Yes':'No', e.notes||''];
+    });
+    const r = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({rows}),
+    });
+    const result = await r.json();
+    if (result.status === 'ok') {
+      const syncedIds = toSync.map(e => e.id);
+      state.pendingSync = state.pendingSync.filter(id => !syncedIds.includes(id));
       save();
+      updateSyncBtn('sync-btn','sync-icon','sync-label','synced','✓','Synced');
+      toast(`✓ ${toSync.length} expense${toSync.length>1?'s':''} synced!`);
+      setTimeout(() => updateSyncBtn('sync-btn','sync-icon','sync-label','','📊','Sync'), 2000);
     }
-    updateSyncBtn('synced', '✓ Synced');
-    toast(`✓ ${toSync.length} expense${toSync.length>1?'s':''} synced to Sheets!`);
   } catch(e) {
-    updateSyncBtn('error', '⚠ Retry');
-    toast('⚠️ Sync failed — will retry');
+    console.error('syncToSheets:', e);
+    updateSyncBtn('sync-btn','sync-icon','sync-label','error','⚠','Retry');
+    toast('⚠️ Sync failed');
   }
-}
-
-function updateSyncBtn(state_, label) {
-  const btn = document.getElementById('sync-btn');
-  const lbl = document.getElementById('sync-label');
-  const ico = document.getElementById('sync-icon');
-  if (!btn) return;
-  btn.className = `sync-btn ${state_}`;
-  if (lbl) lbl.textContent = label;
-  if (ico) ico.className = state_ === 'syncing' ? 'spinning' : '';
-  if (ico && state_ !== 'syncing') ico.textContent = state_ === 'synced' ? '✓' : state_ === 'error' ? '⚠' : '📊';
-}
-
-// ── Reset & Reload ────────────────────────────────────────────
-async function resetAndReload() {
-  // Clear stored sheetId so initSheet searches Drive fresh
-  state.sheetId = null;
-  state.expenses = [];
-  state.pendingSync = [];
-  save();
-  toast('🔄 Re-connecting to Sheet…');
-  await initSheet();
-  await loadFromSheets();
-}
-
-// Show reload button once signed in
-function showHeaderBtns() {
-  document.getElementById('sync-btn').style.display = 'flex';
-  document.getElementById('refresh-btn').style.display = 'flex';
-      <div class="sync-btn" id="refresh-btn" onclick="refreshFromSheets()" style="display:none" title="Refresh from Sheets"><span id="refresh-icon">🔄</span> <span id="refresh-label">Refresh</span></div>
 }
 
 async function refreshFromSheets() {
-  if (!state.accessToken) { toast('Please sign in first'); return; }
-  if (!navigator.onLine) { toast('📵 Offline — cannot refresh'); return; }
-  const btn = document.getElementById('refresh-btn');
-  const icon = document.getElementById('refresh-icon');
-  const label = document.getElementById('refresh-label');
-  if (icon) icon.style.animation = 'spin .8s linear infinite';
-  if (label) label.textContent = 'Loading…';
-  if (btn) btn.className = 'sync-btn syncing';
-  try {
-    await initSheet();
-    await loadFromSheets();
-    if (icon) icon.style.animation = '';
-    if (icon) icon.textContent = '🔄';
-    if (label) label.textContent = 'Refresh';
-    if (btn) btn.className = 'sync-btn synced';
-    setTimeout(() => { if(btn) btn.className = 'sync-btn'; }, 2000);
-  } catch(e) {
-    if (icon) icon.style.animation = '';
-    if (label) label.textContent = 'Refresh';
-    if (btn) btn.className = 'sync-btn error';
-    toast('⚠️ Refresh failed');
-  }
+  await loadFromSheets();
+  if (state.pendingSync.length > 0) await syncToSheets();
+}
+
+function updateSyncBtn(btnId, iconId, labelId, cls, icon, label) {
+  const btn = document.getElementById(btnId);
+  const ico = document.getElementById(iconId);
+  const lbl = document.getElementById(labelId);
+  if (btn) btn.className = 'sync-btn' + (cls ? ' ' + cls : '');
+  if (ico) { ico.textContent = icon; ico.className = cls==='syncing'?'spinning':''; }
+  if (lbl) lbl.textContent = label;
 }
 
 // ── Currency ──────────────────────────────────────────────────
@@ -577,7 +351,7 @@ async function fetchRate() {
   const dot = document.getElementById('rate-dot');
   const display = document.getElementById('rate-display');
   if(dot) dot.className = 'rate-dot loading';
-  if(display) display.textContent = 'Fetching…';
+  if(display) display.textContent = 'Fetching...';
   try {
     const res = await fetch('https://api.exchangerate-api.com/v4/latest/EUR');
     if(!res.ok) throw new Error();
@@ -585,7 +359,6 @@ async function fetchRate() {
     state.eurInr = data.rates.INR;
     if(dot) dot.className = 'rate-dot';
     if(display) display.textContent = `1€=₹${state.eurInr.toFixed(1)}`;
-    toast('Rate updated ✓');
     render();
   } catch(e) {
     state.eurInr = 91.5;
@@ -604,7 +377,6 @@ function fmtDate(d) {
   return dt.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
 }
 
-// ── Toast ─────────────────────────────────────────────────────
 let _toastTimer;
 function toast(msg) {
   const el = document.getElementById('toast');
@@ -614,7 +386,6 @@ function toast(msg) {
   _toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
 }
 
-// ── Tabs ──────────────────────────────────────────────────────
 function switchTab(tab) {
   state.currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach((b, i) => {
@@ -623,11 +394,9 @@ function switchTab(tab) {
   render();
 }
 
-// ── Render ────────────────────────────────────────────────────
 function render() {
   const c = document.getElementById('content');
   if (!c) return;
-  if (!state.accessToken) { renderSignIn(); return; }
   if (state.currentTab === 'add') c.innerHTML = renderAdd();
   else if (state.currentTab === 'list') c.innerHTML = renderList();
   else if (state.currentTab === 'analytics') c.innerHTML = renderAnalytics();
@@ -635,51 +404,29 @@ function render() {
   else if (state.currentTab === 'settings') c.innerHTML = renderSettings();
 }
 
-function renderSignIn() {
-  const c = document.getElementById('content');
-  c.innerHTML = `
-  <div class="signin-screen">
-    <div class="signin-logo">💰</div>
-    <div class="signin-title">expensio<span>.</span></div>
-    <div class="signin-sub">Your personal expense tracker with live EUR↔INR conversion and Google Sheets sync.</div>
-    <button class="google-btn" onclick="signIn()">
-      <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-      Sign in with Google
-    </button>
-    <div class="signin-features">
-      <div class="signin-feature">📊 Expenses auto-sync to Google Sheets</div>
-      <div class="signin-feature">💱 Live EUR ↔ INR conversion</div>
-      <div class="signin-feature">🏦 Loan EMI tracker</div>
-      <div class="signin-feature">📱 Works offline, syncs when back online</div>
-    </div>
-  </div>`;
-}
-
 // ── ADD TAB ───────────────────────────────────────────────────
 function renderAdd() {
-  const cats = state.categories.map(c =>
-    `<option value="${c.id}">${c.emoji} ${c.name}</option>`
-  ).join('');
+  const cats = state.categories.map(c => `<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('');
   const today = new Date().toISOString().split('T')[0];
   const pendingCount = state.pendingSync.length;
   return `
-  <div id="offline-banner" class="offline-banner ${!navigator.onLine?'show':''}">📵 You're offline — expenses saved locally and will sync when reconnected</div>
-  ${pendingCount > 0 ? `<div class="sheets-info">📊 ${pendingCount} expense${pendingCount>1?'s':''} pending sync — <span style="cursor:pointer;font-weight:500;text-decoration:underline" onclick="syncToSheets()">sync now</span></div>` : ''}
+  <div id="offline-banner" class="offline-banner ${!navigator.onLine?'show':''}">📵 Offline — will sync when connected</div>
+  ${pendingCount > 0 ? `<div class="sheets-info">📊 ${pendingCount} pending — <span style="cursor:pointer;font-weight:500;text-decoration:underline" onclick="syncToSheets()">sync now</span></div>` : ''}
   <div class="card">
     <div class="card-title">Log New Expense</div>
     <div class="form-grid">
       <div class="form-group full">
         <label>Item / Description *</label>
-        <input id="f-name" placeholder="e.g. Tomatoes, Electricity bill…" autocomplete="off">
+        <input id="f-name" placeholder="e.g. Tomatoes, Electricity bill..." autocomplete="off">
       </div>
       <div class="form-group">
         <label>Store / Vendor</label>
-        <input id="f-store" placeholder="Albert Heijn, Jumbo…" autocomplete="off">
+        <input id="f-store" placeholder="Albert Heijn, Jumbo..." autocomplete="off">
       </div>
       <div class="form-group">
         <label style="display:flex;align-items:center;justify-content:space-between">
           Category
-          <span onclick="toggleQuickCat()" style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:500" id="quick-cat-toggle">＋ New</span>
+          <span onclick="toggleQuickCat()" style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:500" id="quick-cat-toggle">+ New</span>
         </label>
         <select id="f-cat">${cats}</select>
         <div id="quick-cat-panel" style="display:none;margin-top:8px;background:var(--bg);border-radius:var(--rad);padding:10px;border:0.5px solid var(--border2)">
@@ -707,10 +454,10 @@ function renderAdd() {
         <div class="preview-text" id="amt-preview"></div>
       </div>
       <div class="form-group full">
-        <label>Quantity × Unit Price (optional)</label>
+        <label>Quantity x Unit Price (optional)</label>
         <div class="qty-row">
           <input id="f-qty" type="number" min="1" placeholder="Qty" oninput="updateQtyTotal()">
-          <span class="qty-sep">×</span>
+          <span class="qty-sep">x</span>
           <input id="f-unit-price" type="number" step="0.01" min="0" placeholder="Unit price" oninput="updateQtyTotal()">
         </div>
         <div class="preview-text" id="qty-total"></div>
@@ -721,7 +468,7 @@ function renderAdd() {
       </div>
       <div class="form-group">
         <label>Notes</label>
-        <input id="f-notes" placeholder="Optional details…">
+        <input id="f-notes" placeholder="Optional details...">
       </div>
     </div>
     <div class="btn-row">
@@ -743,7 +490,7 @@ function toggleQuickCat() {
   if (!panel) return;
   const open = panel.style.display === 'none';
   panel.style.display = open ? 'block' : 'none';
-  if (toggle) toggle.textContent = open ? '✕ Cancel' : '＋ New';
+  if (toggle) toggle.textContent = open ? 'x Cancel' : '+ New';
   if (open) document.getElementById('qc-name')?.focus();
 }
 
@@ -751,23 +498,20 @@ function quickAddCategory() {
   const name = document.getElementById('qc-name')?.value.trim();
   const emoji = document.getElementById('qc-emoji')?.value.trim() || '📦';
   const color = document.getElementById('qc-color')?.value || '#6366f1';
-  if (!name) { toast('⚠️ Enter a category name'); return; }
+  if (!name) { toast('Please enter a name'); return; }
   const id = 'cat_' + name.toLowerCase().replace(/\s+/g,'_') + '_' + Date.now();
   state.categories.push({id, name, emoji, color});
   save();
-  toast(`✓ "${name}" added!`);
+  toast(`"${name}" added!`);
   const select = document.getElementById('f-cat');
   if (select) {
-    const opts = state.categories.map(c =>
-      `<option value="${c.id}" ${c.id===id?'selected':''}>${c.emoji} ${c.name}</option>`
-    ).join('');
-    select.innerHTML = opts;
+    select.innerHTML = state.categories.map(c => `<option value="${c.id}" ${c.id===id?'selected':''}>${c.emoji} ${c.name}</option>`).join('');
     select.value = id;
   }
   const panel = document.getElementById('quick-cat-panel');
   if (panel) panel.style.display = 'none';
   const toggle = document.getElementById('quick-cat-toggle');
-  if (toggle) toggle.textContent = '＋ New';
+  if (toggle) toggle.textContent = '+ New';
   const qn = document.getElementById('qc-name'); if(qn) qn.value = '';
   const qe = document.getElementById('qc-emoji'); if(qe) qe.value = '';
 }
@@ -778,9 +522,7 @@ function updateAmtPreview() {
   if (!el) return;
   if (!v) { el.textContent = ''; return; }
   if (!state.eurInr) { el.textContent = 'Rate unavailable'; return; }
-  el.textContent = state.currency === 'EUR'
-    ? '≈ ' + fmtInr(eurToInr(v))
-    : '≈ ' + fmtEur(inrToEur(v));
+  el.textContent = state.currency === 'EUR' ? '≈ ' + fmtInr(eurToInr(v)) : '≈ ' + fmtEur(inrToEur(v));
 }
 
 function updateQtyTotal() {
@@ -804,20 +546,19 @@ async function addExpense() {
   const qty = parseFloat(document.getElementById('f-qty')?.value || 0);
   const unitPrice = parseFloat(document.getElementById('f-unit-price')?.value || 0);
 
-  if (!name) { toast('⚠️ Please enter an item name'); return; }
-  if (!rawAmt) { toast('⚠️ Please enter an amount'); return; }
-  if (!date) { toast('⚠️ Please select a date'); return; }
+  if (!name) { toast('Please enter an item name'); return; }
+  if (!rawAmt) { toast('Please enter an amount'); return; }
+  if (!date) { toast('Please select a date'); return; }
 
   let amtEur = state.currency === 'EUR' ? rawAmt : (state.eurInr ? inrToEur(rawAmt) : null);
-  if (!amtEur) { toast('⚠️ Rate unavailable, try refreshing'); return; }
+  if (!amtEur) { toast('Rate unavailable, try refreshing'); return; }
 
   const exp = {
     id: Date.now(),
     name, store: store || '',
     catId: catId || 'other',
     amtEur: parseFloat(amtEur.toFixed(4)),
-    originalAmt: rawAmt,
-    originalCur: state.currency,
+    originalAmt: rawAmt, originalCur: state.currency,
     date, notes: notes || '',
     qty: qty > 0 ? qty : (unitPrice > 0 ? 1 : 0),
     unitPrice: unitPrice || 0,
@@ -827,14 +568,10 @@ async function addExpense() {
   state.expenses.push(exp);
   state.pendingSync.push(exp.id);
   save();
-  toast('✓ Saved!');
+  toast('Saved!');
   clearForm();
   render();
-
-  // Auto-sync if online
-  if (navigator.onLine && state.accessToken) {
-    setTimeout(() => syncToSheets(), 800);
-  }
+  if (navigator.onLine) setTimeout(() => syncToSheets(), 800);
 }
 
 function clearForm() {
@@ -848,7 +585,7 @@ function clearForm() {
 
 // ── LIST TAB ──────────────────────────────────────────────────
 function renderList() {
-  const placeholder = state.searchMode === 'store' ? 'Search stores…' : state.searchMode === 'cat' ? 'Search categories…' : 'Search items…';
+  const placeholder = state.searchMode === 'store' ? 'Search stores...' : state.searchMode === 'cat' ? 'Search categories...' : 'Search items...';
   return `
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
@@ -859,9 +596,7 @@ function renderList() {
     <button class="stab ${state.searchMode==='store'?'active':''}" onclick="setSearchMode('store')">By Store</button>
     <button class="stab ${state.searchMode==='cat'?'active':''}" onclick="setSearchMode('cat')">By Category</button>
   </div>
-  <div id="list-results">
-    ${renderGroupedList('')}
-  </div>`;
+  <div id="list-results">${renderGroupedList('')}</div>`;
 }
 
 function setSearchMode(mode) { state.searchMode = mode; render(); }
@@ -874,8 +609,6 @@ function liveSearch() {
 
 function renderGroupedList(q) {
   let exps = state.expenses.slice().reverse();
-
-  // Filter by query
   if (q) {
     exps = exps.filter(e => {
       if (state.searchMode === 'item') return e.name.toLowerCase().includes(q);
@@ -887,10 +620,8 @@ function renderGroupedList(q) {
       return true;
     });
   }
-
   if (!exps.length) return `<div class="card"><div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses found</div></div></div>`;
 
-  // Group by store or category
   if (state.searchMode === 'store') {
     const groups = {};
     exps.forEach(e => {
@@ -898,15 +629,13 @@ function renderGroupedList(q) {
       if (!groups[key]) groups[key] = [];
       groups[key].push(e);
     });
-    // Sort groups by most recent expense date
     return Object.entries(groups)
       .sort((a,b) => b[1][0].date.localeCompare(a[1][0].date))
       .map(([store, items]) => {
         const total = items.reduce((a,e) => a+e.amtEur, 0);
-        const lastDate = fmtDate(items[0].date);
         return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center">
           <span>🏪 ${escHtml(store)}</span>
-          <span style="font-family:var(--fm)">${fmtEur(total)} · last ${lastDate}</span>
+          <span style="font-family:var(--fm)">${fmtEur(total)} · last ${fmtDate(items[0].date)}</span>
         </div>
         <div class="card">${renderExpenseItems(items)}</div>`;
       }).join('');
@@ -915,10 +644,9 @@ function renderGroupedList(q) {
   if (state.searchMode === 'cat') {
     const groups = {};
     exps.forEach(e => {
-      const cat = state.categories.find(c => c.id === e.catId) || {name:'Other', emoji:'📦'};
-      const key = cat.name;
-      if (!groups[key]) groups[key] = {cat, items:[]};
-      groups[key].items.push(e);
+      const cat = state.categories.find(c => c.id === e.catId) || {name:'Other',emoji:'📦'};
+      if (!groups[cat.name]) groups[cat.name] = {cat, items:[]};
+      groups[cat.name].items.push(e);
     });
     return Object.entries(groups)
       .sort((a,b) => b[1].items.reduce((s,e)=>s+e.amtEur,0) - a[1].items.reduce((s,e)=>s+e.amtEur,0))
@@ -932,7 +660,6 @@ function renderGroupedList(q) {
       }).join('');
   }
 
-  // Default: by item (flat list)
   return `<div class="card">${renderExpenseItems(exps)}</div>`;
 }
 
@@ -952,7 +679,7 @@ function renderExpenseItems(exps) {
       <div class="expense-amt">
         <div class="expense-eur">${fmtEur(e.amtEur)}</div>
         ${inrStr?`<div class="expense-inr">${inrStr}</div>`:''}
-        <span class="del-btn" onclick="deleteExpense(${e.id})">✕ remove</span>
+        <span class="del-btn" onclick="deleteExpense(${e.id})">x remove</span>
       </div>
     </div>`;
   }).join('');
@@ -962,9 +689,7 @@ function deleteExpense(id) {
   if (!confirm('Remove this expense?')) return;
   state.expenses = state.expenses.filter(e => e.id !== id);
   state.pendingSync = state.pendingSync.filter(i => i !== id);
-  save();
-  toast('Removed');
-  render();
+  save(); toast('Removed'); render();
 }
 
 function escHtml(s) {
@@ -1039,7 +764,7 @@ function renderAnalytics() {
     </div>`;
   }).join('') : '';
 
-  // ── 12-month overview (always shown) ──
+  // 12-month overview
   const now12 = new Date();
   const monthlyData = [];
   for (let i = 11; i >= 0; i--) {
@@ -1049,11 +774,7 @@ function renderAnalytics() {
     const mLoan = state.expenses.filter(e=>e.date.startsWith(mStr)&&e.isLoanEMI).reduce((a,e)=>a+e.amtEur,0);
     monthlyData.push({
       label: d.toLocaleDateString('en',{month:'short'}),
-      year: d.getFullYear(),
-      month: d.getMonth(),
-      total: mTotal,
-      loan: mLoan,
-      nonLoan: mTotal - mLoan,
+      total: mTotal, loan: mLoan,
       isCurrent: d.getMonth()===now12.getMonth() && d.getFullYear()===now12.getFullYear()
     });
   }
@@ -1064,25 +785,23 @@ function renderAnalytics() {
     const nonLoanPct = totalPct - loanPct;
     return `<div class="bar-row">
       <div class="bar-label" style="${d.isCurrent?'color:var(--accent);font-weight:600':''}">${d.label}${d.isCurrent?' ◂':''}</div>
-      <div class="bar-track" style="position:relative">
+      <div class="bar-track">
         <div style="display:flex;height:100%;border-radius:5px;overflow:hidden">
-          <div style="width:${nonLoanPct}%;background:#2563eb;min-width:${d.nonLoan>0?3:0}px;transition:width .5s ease"></div>
-          <div style="width:${loanPct}%;background:#0891b2;min-width:${d.loan>0?3:0}px;transition:width .5s ease"></div>
+          <div style="width:${nonLoanPct}%;background:#2563eb;min-width:${d.total-d.loan>0?3:0}px"></div>
+          <div style="width:${loanPct}%;background:#0891b2;min-width:${d.loan>0?3:0}px"></div>
         </div>
       </div>
       <div class="bar-val">${d.total>0?fmtEur(d.total):'-'}</div>
     </div>`;
   }).join('');
 
-  const monthlyLegend = `<div style="display:flex;gap:16px;margin-bottom:10px;font-size:11px;color:var(--txt2)">
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;display:inline-block"></span>Expenses</span>
-    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#0891b2;display:inline-block"></span>Loan EMI</span>
-  </div>`;
-
   return `
   <div class="card" style="margin-bottom:12px">
     <div class="card-title">12-month overview</div>
-    ${monthlyLegend}
+    <div style="display:flex;gap:16px;margin-bottom:10px;font-size:11px;color:var(--txt2)">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;display:inline-block"></span>Expenses</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#0891b2;display:inline-block"></span>Loan EMI</span>
+    </div>
     <div class="bar-chart">${monthlyBars}</div>
   </div>
   <div class="period-tabs">
@@ -1103,7 +822,7 @@ function renderAnalytics() {
       <div class="metric-val">${fmtEur(avg)}</div>
     </div>
   </div>
-  ${catBars ? `<div class="card"><div class="card-title">By category — ${periodLabel}</div><div class="bar-chart">${catBars}</div></div>` : `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">No expenses in this period yet</div></div>`}
+  ${catBars ? `<div class="card"><div class="card-title">By category — ${periodLabel}</div><div class="bar-chart">${catBars}</div></div>` : `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">No expenses yet</div></div>`}
   ${timeBars ? `<div class="card"><div class="card-title">${period==='year'?'Monthly':'Daily'} breakdown</div><div class="bar-chart">${timeBars}</div></div>` : ''}`;
 }
 
@@ -1123,14 +842,8 @@ function renderLoans() {
     <div class="loan-hero-amt">${neededEur ? fmtEur(neededEur) : '—'}</div>
     <div class="loan-hero-sub">${targetInr ? fmtInr(targetInr) + ' at current rate' : 'Set your target EMI below'}</div>
     <div class="loan-grid">
-      <div class="loan-stat">
-        <div class="loan-stat-label">Logged this month</div>
-        <div class="loan-stat-val">${fmtEur(loggedEur)}</div>
-      </div>
-      <div class="loan-stat">
-        <div class="loan-stat-label">Still to transfer</div>
-        <div class="loan-stat-val">${remainEur !== null ? fmtEur(remainEur) : '—'}</div>
-      </div>
+      <div class="loan-stat"><div class="loan-stat-label">Logged this month</div><div class="loan-stat-val">${fmtEur(loggedEur)}</div></div>
+      <div class="loan-stat"><div class="loan-stat-label">Still to transfer</div><div class="loan-stat-val">${remainEur !== null ? fmtEur(remainEur) : '—'}</div></div>
     </div>
   </div>
   <div class="card">
@@ -1154,7 +867,7 @@ function renderLoans() {
 
 function saveLoanTarget() {
   const v = parseFloat(document.getElementById('loan-inr')?.value || 0);
-  state.loanMonthlyINR = v; save(); toast('✓ Target saved!'); render();
+  state.loanMonthlyINR = v; save(); toast('Target saved!'); render();
 }
 
 // ── CATEGORIES ────────────────────────────────────────────────
@@ -1163,7 +876,7 @@ function renderSettings() {
     <div class="cat-card">
       <span style="font-size:20px">${c.emoji}</span>
       <div class="cat-name" style="color:${c.color}">${c.name}</div>
-      <span class="cat-del" onclick="deleteCat('${c.id}')">✕</span>
+      <span class="cat-del" onclick="deleteCat('${c.id}')">x</span>
     </div>`).join('');
   return `
   <div class="card">
@@ -1172,30 +885,18 @@ function renderSettings() {
     <hr class="divider">
     <div class="card-title">Add New Category</div>
     <div class="form-grid">
-      <div class="form-group">
-        <label>Name</label>
-        <input id="nc-name" placeholder="e.g. Gym, Insurance…">
-      </div>
-      <div class="form-group">
-        <label>Emoji</label>
-        <input id="nc-emoji" placeholder="🏋️" maxlength="2" style="font-size:20px;text-align:center">
-      </div>
-      <div class="form-group full">
-        <label>Color</label>
-        <input id="nc-color" type="color" value="#6366f1">
-      </div>
+      <div class="form-group"><label>Name</label><input id="nc-name" placeholder="e.g. Gym, Insurance..."></div>
+      <div class="form-group"><label>Emoji</label><input id="nc-emoji" placeholder="🏋️" maxlength="2" style="font-size:20px;text-align:center"></div>
+      <div class="form-group full"><label>Color</label><input id="nc-color" type="color" value="#6366f1"></div>
     </div>
-    <div class="btn-row">
-      <button class="btn btn-primary" onclick="addCategory()">Add Category</button>
-    </div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="addCategory()">Add Category</button></div>
   </div>
   <div class="card">
-    <div class="card-title">Account</div>
-    <p style="font-size:13px;color:var(--txt2);margin-bottom:4px">Signed in as <strong>${state.userEmail||'Unknown'}</strong></p>
-    <p style="font-size:13px;color:var(--txt2);margin-bottom:12px">${state.sheetId?`📊 Syncing to <a href="https://docs.google.com/spreadsheets/d/${state.sheetId}" target="_blank" style="color:var(--accent)">Google Sheet</a>`:'Sheet not yet created'}</p>
+    <div class="card-title">Data</div>
+    <p style="font-size:13px;color:var(--txt2);margin-bottom:12px">${state.expenses.length} expenses · <a href="https://docs.google.com/spreadsheets/d/${SHEET_ID}" target="_blank" style="color:var(--accent)">Open Google Sheet</a></p>
     <div class="btn-row">
-      <button class="btn btn-ghost" onclick="exportCSV()">⬇ Export CSV</button>
-      <button class="btn btn-ghost" style="color:var(--danger);border-color:rgba(220,38,38,.3)" onclick="clearAll()">🗑 Clear data</button>
+      <button class="btn btn-ghost" onclick="exportCSV()">Export CSV</button>
+      <button class="btn btn-ghost" style="color:var(--danger);border-color:rgba(220,38,38,.3)" onclick="clearAll()">Clear local data</button>
     </div>
   </div>`;
 }
@@ -1204,10 +905,10 @@ function addCategory() {
   const name = document.getElementById('nc-name')?.value.trim();
   const emoji = document.getElementById('nc-emoji')?.value.trim() || '📦';
   const color = document.getElementById('nc-color')?.value || '#6366f1';
-  if (!name) { toast('⚠️ Please enter a name'); return; }
+  if (!name) { toast('Please enter a name'); return; }
   const id = 'cat_' + name.toLowerCase().replace(/\s+/g,'_') + '_' + Date.now();
   state.categories.push({id, name, emoji, color});
-  save(); toast('✓ Category added!'); render();
+  save(); toast('Category added!'); render();
 }
 
 function deleteCat(id) {
@@ -1225,26 +926,23 @@ function exportCSV() {
     const cat = state.categories.find(c=>c.id===e.catId);
     return [e.date,`"${e.name}"`,`"${e.store}"`,cat?`"${cat.name}"`:'Other',e.amtEur.toFixed(2),state.eurInr?Math.round(eurToInr(e.amtEur)):'',e.originalAmt,e.originalCur,e.qty||'',e.unitPrice||'',e.isLoanEMI?'Yes':'No',`"${e.notes||''}"`].join(',');
   });
-  const csv = [header.join(','), ...rows].join('\n');
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.href = URL.createObjectURL(new Blob([[header.join(','), ...rows].join('\n')],{type:'text/csv'}));
   a.download = 'expensio_export.csv'; a.click();
-  toast('✓ CSV downloaded!');
+  toast('CSV downloaded!');
 }
 
 function clearAll() {
-  if (!confirm('Delete ALL local expenses? (Sheet data is preserved)')) return;
+  if (!confirm('Delete ALL local expenses? Sheet data is preserved.')) return;
   state.expenses = []; state.pendingSync = [];
   save(); toast('Cleared'); render();
 }
 
 // ── Init ──────────────────────────────────────────────────────
 fetchRate();
-initGoogleAuth();
-// Unregister any existing service workers to prevent caching issues
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
-}
+render();
+// Auto-load from sheets on startup
+loadFromSheets();
 </script>
 </body>
 </html>
