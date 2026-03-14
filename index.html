@@ -344,8 +344,8 @@ function onSignedIn() {
   document.getElementById('sync-btn').style.display = 'flex';
   toast(`✓ Welcome, ${state.userName || 'there'}!`);
   render();
-  // Init sheet then sync pending
-  initSheet().then(() => {
+  // Init sheet, load all expenses from Sheets, then sync any pending local entries
+  initSheet().then(() => loadFromSheets()).then(() => {
     if (state.pendingSync.length > 0) syncToSheets();
   });
 }
@@ -431,6 +431,52 @@ async function appendToSheet(expenses) {
     { values: rows }
   );
   return true;
+}
+
+async function loadFromSheets() {
+  if (!state.sheetId || !state.accessToken) return;
+  updateSyncBtn('syncing', '⧳ Loading…');
+  try {
+    const data = await sheetsRequest(
+      `${SHEETS_API}/${state.sheetId}/values/Expenses!A2:M?majorDimension=ROWS`
+    );
+    const rows = data.values || [];
+    if (!rows.length) { updateSyncBtn('synced', '✓ Synced'); return; }
+
+    // Parse rows: ID,Date,Item,Store,Category,AmtEUR,AmtINR,OrigAmt,OrigCur,Qty,UnitPrice,IsLoanEMI,Notes
+    const sheetExpenses = rows.map(r => {
+      const catName = r[4] || 'Other';
+      const cat = state.categories.find(c => c.name === catName) || state.categories.find(c => c.id === 'other');
+      return {
+        id: parseInt(r[0]) || Date.now() + Math.random(),
+        date: r[1] || '',
+        name: r[2] || '',
+        store: r[3] || '',
+        catId: cat ? cat.id : 'other',
+        amtEur: parseFloat(r[5]) || 0,
+        originalAmt: parseFloat(r[7]) || 0,
+        originalCur: r[8] || 'EUR',
+        qty: parseFloat(r[9]) || 0,
+        unitPrice: parseFloat(r[10]) || 0,
+        isLoanEMI: r[11] === 'Yes',
+        notes: r[12] || '',
+      };
+    }).filter(e => e.name && e.amtEur);
+
+    // Merge: sheet is source of truth — replace local with sheet data, keep pending local additions
+    const pendingExpenses = state.expenses.filter(e => state.pendingSync.includes(e.id));
+    const sheetIds = new Set(sheetExpenses.map(e => String(e.id)));
+    // Add pending local ones not yet in sheet
+    const newLocal = pendingExpenses.filter(e => !sheetIds.has(String(e.id)));
+    state.expenses = [...sheetExpenses, ...newLocal];
+    save();
+    render();
+    updateSyncBtn('synced', '✓ Synced');
+    toast(`✓ Loaded ${sheetExpenses.length} expenses from Sheets`);
+  } catch(e) {
+    console.error('loadFromSheets error:', e);
+    updateSyncBtn('synced', '✓ Sheets');
+  }
 }
 
 async function syncToSheets() {
