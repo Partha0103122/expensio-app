@@ -958,7 +958,52 @@ function renderAnalytics() {
     </div>`;
   }).join('') : '';
 
+  // ── 12-month overview (always shown) ──
+  const now12 = new Date();
+  const monthlyData = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now12.getFullYear(), now12.getMonth() - i, 1);
+    const mStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const mTotal = state.expenses.filter(e=>e.date.startsWith(mStr)).reduce((a,e)=>a+e.amtEur,0);
+    const mLoan = state.expenses.filter(e=>e.date.startsWith(mStr)&&e.isLoanEMI).reduce((a,e)=>a+e.amtEur,0);
+    monthlyData.push({
+      label: d.toLocaleDateString('en',{month:'short'}),
+      year: d.getFullYear(),
+      month: d.getMonth(),
+      total: mTotal,
+      loan: mLoan,
+      nonLoan: mTotal - mLoan,
+      isCurrent: d.getMonth()===now12.getMonth() && d.getFullYear()===now12.getFullYear()
+    });
+  }
+  const maxMonthly = Math.max(...monthlyData.map(d=>d.total), 1);
+  const monthlyBars = monthlyData.map(d => {
+    const totalPct = Math.max(d.total>0?3:0, (d.total/maxMonthly)*100);
+    const loanPct = d.total>0 ? (d.loan/d.total)*totalPct : 0;
+    const nonLoanPct = totalPct - loanPct;
+    return `<div class="bar-row">
+      <div class="bar-label" style="${d.isCurrent?'color:var(--accent);font-weight:600':''}">${d.label}${d.isCurrent?' ◂':''}</div>
+      <div class="bar-track" style="position:relative">
+        <div style="display:flex;height:100%;border-radius:5px;overflow:hidden">
+          <div style="width:${nonLoanPct}%;background:#2563eb;min-width:${d.nonLoan>0?3:0}px;transition:width .5s ease"></div>
+          <div style="width:${loanPct}%;background:#0891b2;min-width:${d.loan>0?3:0}px;transition:width .5s ease"></div>
+        </div>
+      </div>
+      <div class="bar-val">${d.total>0?fmtEur(d.total):'-'}</div>
+    </div>`;
+  }).join('');
+
+  const monthlyLegend = `<div style="display:flex;gap:16px;margin-bottom:10px;font-size:11px;color:var(--txt2)">
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;display:inline-block"></span>Expenses</span>
+    <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#0891b2;display:inline-block"></span>Loan EMI</span>
+  </div>`;
+
   return `
+  <div class="card" style="margin-bottom:12px">
+    <div class="card-title">12-month overview</div>
+    ${monthlyLegend}
+    <div class="bar-chart">${monthlyBars}</div>
+  </div>
   <div class="period-tabs">
     ${['day','week','month','year'].map(p=>`<button class="ptab ${p===period?'active':''}" onclick="state.analyticsPeriod='${p}';render()">${{day:'Day',week:'Week',month:'Month',year:'Year'}[p]}</button>`).join('')}
   </div>
