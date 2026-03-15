@@ -204,6 +204,33 @@
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- Edit Modal -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center">
+  <div style="background:var(--card);border-radius:var(--rad-lg) var(--rad-lg) 0 0;padding:20px 16px 32px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-size:15px;font-weight:600">Edit Expense</div>
+      <span onclick="closeEditModal()" style="font-size:20px;cursor:pointer;color:var(--txt3);padding:2px 6px">✕</span>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Item / Description *</label><input id="e-name" placeholder="e.g. Tomatoes..."></div>
+      <div class="form-group"><label>Store / Vendor</label><input id="e-store" placeholder="Albert Heijn..."></div>
+      <div class="form-group"><label>Category</label><select id="e-cat"></select></div>
+      <div class="form-group full">
+        <label>Amount (EUR) *</label>
+        <input id="e-amount" type="number" step="0.01" min="0" placeholder="0.00">
+      </div>
+      <div class="form-group"><label>Date *</label><input id="e-date" type="date"></div>
+      <div class="form-group"><label>Notes</label><input id="e-notes" placeholder="Optional..."></div>
+      <div class="form-group"><label>Qty</label><input id="e-qty" type="number" min="0" placeholder="0"></div>
+      <div class="form-group"><label>Unit Price</label><input id="e-unit-price" type="number" step="0.01" min="0" placeholder="0.00"></div>
+    </div>
+    <div class="btn-row" style="margin-top:18px">
+      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+      <button class="btn btn-ghost" onclick="closeEditModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxqT1_N2PIaKl33sy06HzfCnA1l_38QHuODCy7gP7eBJsYEfu2NWYuHSm_4Dhs_DcTEqQ/exec';
 const API_KEY = 'AIzaSyBRQDgZuy--RdUyUIntov-WR1-Tx9ZrQjM';
@@ -679,6 +706,7 @@ function renderExpenseItems(exps) {
       <div class="expense-amt">
         <div class="expense-eur">${fmtEur(e.amtEur)}</div>
         ${inrStr?`<div class="expense-inr">${inrStr}</div>`:''}
+        <span class="del-btn" style="margin-right:4px" onclick="openEditModal(${e.id})">✏️ edit</span>
         <span class="del-btn" onclick="deleteExpense(${e.id})">x remove</span>
       </div>
     </div>`;
@@ -711,6 +739,88 @@ async function deleteExpense(id) {
     }
   } else {
     toast('Removed locally (offline — sheet not updated)');
+  }
+}
+
+// ── EDIT MODAL ────────────────────────────────────────────────
+let _editingId = null;
+
+function openEditModal(id) {
+  const e = state.expenses.find(ex => ex.id === id);
+  if (!e) return;
+  _editingId = id;
+
+  // Populate category options
+  const catSelect = document.getElementById('e-cat');
+  catSelect.innerHTML = state.categories.map(c => `<option value="${c.id}" ${c.id===e.catId?'selected':''}>${c.emoji} ${c.name}</option>`).join('');
+
+  document.getElementById('e-name').value = e.name || '';
+  document.getElementById('e-store').value = e.store || '';
+  document.getElementById('e-amount').value = e.amtEur || '';
+  document.getElementById('e-date').value = e.date || '';
+  document.getElementById('e-notes').value = e.notes || '';
+  document.getElementById('e-qty').value = e.qty || '';
+  document.getElementById('e-unit-price').value = e.unitPrice || '';
+
+  const modal = document.getElementById('edit-modal');
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('e-name').focus(), 100);
+}
+
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+  _editingId = null;
+}
+
+async function saveEdit() {
+  const idx = state.expenses.findIndex(ex => ex.id === _editingId);
+  if (idx === -1) return;
+
+  const name = document.getElementById('e-name').value.trim();
+  const amtEur = parseFloat(document.getElementById('e-amount').value);
+  const date = document.getElementById('e-date').value;
+  if (!name) { toast('Please enter a name'); return; }
+  if (!amtEur) { toast('Please enter an amount'); return; }
+  if (!date) { toast('Please select a date'); return; }
+
+  const catId = document.getElementById('e-cat').value;
+  state.expenses[idx] = {
+    ...state.expenses[idx],
+    name,
+    store: document.getElementById('e-store').value.trim(),
+    catId,
+    amtEur: parseFloat(amtEur.toFixed(4)),
+    date,
+    notes: document.getElementById('e-notes').value.trim(),
+    qty: parseFloat(document.getElementById('e-qty').value) || 0,
+    unitPrice: parseFloat(document.getElementById('e-unit-price').value) || 0,
+    isLoanEMI: catId === 'loans',
+    originalAmt: parseFloat(amtEur.toFixed(4)),
+    originalCur: 'EUR',
+  };
+
+  closeEditModal();
+  save(); render(); toast('Updated!');
+
+  // Sync update to Google Sheets
+  if (navigator.onLine) {
+    try {
+      const e = state.expenses[idx];
+      const cat = state.categories.find(c => c.id === e.catId);
+      const inrAmt = state.eurInr ? Math.round(e.amtEur * state.eurInr) : '';
+      const row = [e.id, e.date, e.name, e.store||'', cat?cat.name:'Other',
+        e.amtEur.toFixed(2), inrAmt, e.originalAmt, e.originalCur,
+        e.qty||'', e.unitPrice||'', e.isLoanEMI?'Yes':'No', e.notes||''];
+      const r = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'update', id: e.id, row }),
+      });
+      const result = await r.json();
+      if (result.status === 'ok') toast('✓ Updated in sheet');
+      else toast('⚠️ Updated locally — sheet sync failed');
+    } catch(err) {
+      toast('⚠️ Updated locally — sheet sync failed');
+    }
   }
 }
 
