@@ -685,11 +685,33 @@ function renderExpenseItems(exps) {
   }).join('');
 }
 
-function deleteExpense(id) {
+async function deleteExpense(id) {
   if (!confirm('Remove this expense?')) return;
   state.expenses = state.expenses.filter(e => e.id !== id);
   state.pendingSync = state.pendingSync.filter(i => i !== id);
-  save(); toast('Removed'); render();
+  save(); render();
+
+  // Also delete from Google Sheets if online
+  if (navigator.onLine) {
+    try {
+      toast('Removing from sheet…');
+      const r = await fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'delete', id: id }),
+      });
+      const result = await r.json();
+      if (result.status === 'ok') {
+        toast('✓ Removed from sheet');
+      } else {
+        toast('⚠️ Removed locally — sheet delete failed');
+      }
+    } catch(e) {
+      console.error('deleteExpense sheet sync:', e);
+      toast('⚠️ Removed locally — sheet delete failed');
+    }
+  } else {
+    toast('Removed locally (offline — sheet not updated)');
+  }
 }
 
 function escHtml(s) {
