@@ -784,7 +784,8 @@ function renderItemHistoryChart(itemName) {
   const history = state.expenses
     .filter(e => e.name.toLowerCase() === lower)
     .sort((a,b) => a.date.localeCompare(b.date));
-  if (history.length < 2) return ''; // Only show chart if 2+ purchases
+  if (!history.length) return ''; // Item not found at all
+  // Show chart for even a single purchase
 
   const max = Math.max(...history.map(e => e.amtEur), 1);
   const total = history.reduce((a,e) => a+e.amtEur, 0);
@@ -812,7 +813,7 @@ function renderItemHistoryChart(itemName) {
       </div>
       <div style="background:var(--bg);border-radius:var(--rad);padding:8px 12px;font-size:11px">
         <div style="color:var(--txt3);margin-bottom:2px">AVG PRICE</div>
-        <div style="font-weight:600;font-family:var(--fm)">${fmtEur(avg)}</div>
+        <div style="font-weight:600;font-family:var(--fm)">${history.length > 1 ? fmtEur(avg) : '—'}</div>
       </div>
       <div style="background:var(--bg);border-radius:var(--rad);padding:8px 12px;font-size:11px">
         <div style="color:var(--txt3);margin-bottom:2px">LAST BOUGHT</div>
