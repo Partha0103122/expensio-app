@@ -433,9 +433,16 @@ function render() {
 
 // ── ADD TAB ───────────────────────────────────────────────────
 function renderAdd() {
-  const cats = state.categories.map(c => `<option value="${c.id}">${c.emoji} ${c.name}</option>`).join('');
+  const draft = state._formDraft || {};
   const today = new Date().toISOString().split('T')[0];
   const pendingCount = state.pendingSync.length;
+
+  // Persist store & category from last saved expense
+  const lastExp = state.expenses.length ? state.expenses[state.expenses.length - 1] : null;
+  const defaultStore = draft.store !== undefined ? draft.store : (lastExp ? lastExp.store : '');
+  const defaultCatId = draft.catId !== undefined ? draft.catId : (lastExp ? lastExp.catId : 'groceries');
+  const defaultCat = state.categories.find(c => c.id === defaultCatId) || state.categories[0];
+
   return `
   <div id="offline-banner" class="offline-banner ${!navigator.onLine?'show':''}">📵 Offline — will sync when connected</div>
   ${pendingCount > 0 ? `<div class="sheets-info">📊 ${pendingCount} pending — <span style="cursor:pointer;font-weight:500;text-decoration:underline" onclick="syncToSheets()">sync now</span></div>` : ''}
@@ -444,18 +451,37 @@ function renderAdd() {
     <div class="form-grid">
       <div class="form-group full">
         <label>Item / Description *</label>
-        <input id="f-name" placeholder="e.g. Tomatoes, Electricity bill..." autocomplete="off">
+        <div style="position:relative">
+          <input id="f-name" placeholder="e.g. Tomatoes, Electricity bill..." autocomplete="off" value="${escHtml(draft.name||'')}"
+            oninput="filterItemSuggestions(this.value)"
+            onfocus="filterItemSuggestions(this.value)"
+            style="width:100%">
+          <div id="item-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--border2);border-radius:var(--rad);z-index:50;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+        </div>
       </div>
       <div class="form-group">
         <label>Store / Vendor</label>
-        <input id="f-store" placeholder="Albert Heijn, Jumbo..." autocomplete="off">
+        <input id="f-store" placeholder="Albert Heijn, Jumbo..." autocomplete="off" value="${escHtml(defaultStore)}">
       </div>
       <div class="form-group">
         <label style="display:flex;align-items:center;justify-content:space-between">
           Category
           <span onclick="toggleQuickCat()" style="font-size:11px;color:var(--accent);cursor:pointer;font-weight:500" id="quick-cat-toggle">+ New</span>
         </label>
-        <select id="f-cat">${cats}</select>
+        <div style="position:relative">
+          <input id="f-cat-search" placeholder="Search category..." autocomplete="off"
+            value="${escHtml(defaultCat.emoji + ' ' + defaultCat.name)}"
+            oninput="filterCatDropdown(this.value)"
+            onfocus="showCatDropdown()"
+            style="width:100%">
+          <input type="hidden" id="f-cat" value="${defaultCatId}">
+          <div id="cat-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--border2);border-radius:var(--rad);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)">
+            ${state.categories.map(c=>`<div class="cat-option" data-id="${c.id}" data-label="${escHtml(c.emoji+' '+c.name)}" onclick="selectCat('${c.id}','${escHtml(c.emoji+' '+c.name)}')" style="padding:9px 12px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:0.5px solid var(--border)">
+              <span style="width:22px;height:22px;border-radius:6px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:13px">${c.emoji}</span>
+              <span style="color:${c.color};font-weight:500">${escHtml(c.name)}</span>
+            </div>`).join('')}
+          </div>
+        </div>
         <div id="quick-cat-panel" style="display:none;margin-top:8px;background:var(--bg);border-radius:var(--rad);padding:10px;border:0.5px solid var(--border2)">
           <div style="font-size:11px;color:var(--txt2);font-weight:500;margin-bottom:8px">Quick add category</div>
           <div style="display:grid;grid-template-columns:1fr 48px 60px;gap:6px;align-items:center">
@@ -472,7 +498,7 @@ function renderAdd() {
       <div class="form-group full">
         <label>Amount *</label>
         <div class="currency-row">
-          <input id="f-amount" type="number" step="0.01" min="0" placeholder="0.00" oninput="updateAmtPreview()">
+          <input id="f-amount" type="number" step="0.01" min="0" placeholder="0.00" oninput="updateAmtPreview()" value="${escHtml(draft.amt||'')}">
           <div class="cur-toggle">
             <button class="cur-btn ${state.currency==='EUR'?'active':''}" onclick="setCurrency('EUR')">€ EUR</button>
             <button class="cur-btn ${state.currency==='INR'?'active':''}" onclick="setCurrency('INR')">₹ INR</button>
@@ -483,19 +509,19 @@ function renderAdd() {
       <div class="form-group full">
         <label>Quantity x Unit Price (optional)</label>
         <div class="qty-row">
-          <input id="f-qty" type="number" min="1" placeholder="Qty" oninput="updateQtyTotal()">
+          <input id="f-qty" type="number" min="1" placeholder="Qty" oninput="updateQtyTotal()" value="${escHtml(draft.qty||'')}">
           <span class="qty-sep">x</span>
-          <input id="f-unit-price" type="number" step="0.01" min="0" placeholder="Unit price" oninput="updateQtyTotal()">
+          <input id="f-unit-price" type="number" step="0.01" min="0" placeholder="Unit price" oninput="updateQtyTotal()" value="${escHtml(draft.up||'')}">
         </div>
         <div class="preview-text" id="qty-total"></div>
       </div>
       <div class="form-group">
         <label>Date *</label>
-        <input id="f-date" type="date" value="${today}">
+        <input id="f-date" type="date" value="${draft.date||today}">
       </div>
       <div class="form-group">
         <label>Notes</label>
-        <input id="f-notes" placeholder="Optional details...">
+        <input id="f-notes" placeholder="Optional details..." value="${escHtml(draft.notes||'')}">
       </div>
     </div>
     <div class="btn-row">
@@ -509,7 +535,113 @@ function renderAdd() {
   ` : ''}`;
 }
 
-function setCurrency(c) { state.currency = c; render(); }
+function showCatDropdown() {
+  document.getElementById('cat-dropdown').style.display = 'block';
+  document.addEventListener('click', hideCatDropdownOutside);
+}
+function hideCatDropdownOutside(e) {
+  const dd = document.getElementById('cat-dropdown');
+  const inp = document.getElementById('f-cat-search');
+  if (dd && inp && !dd.contains(e.target) && e.target !== inp) {
+    dd.style.display = 'none';
+    document.removeEventListener('click', hideCatDropdownOutside);
+  }
+}
+function filterCatDropdown(q) {
+  const dd = document.getElementById('cat-dropdown');
+  if (!dd) return;
+  dd.style.display = 'block';
+  const lower = q.toLowerCase();
+  dd.querySelectorAll('.cat-option').forEach(el => {
+    el.style.display = el.dataset.label.toLowerCase().includes(lower) ? '' : 'none';
+  });
+}
+function selectCat(id, label) {
+  const hidden = document.getElementById('f-cat');
+  const search = document.getElementById('f-cat-search');
+  const dd = document.getElementById('cat-dropdown');
+  if (hidden) hidden.value = id;
+  if (search) search.value = label;
+  if (dd) dd.style.display = 'none';
+  document.removeEventListener('click', hideCatDropdownOutside);
+}
+
+// ── ITEM AUTOCOMPLETE ─────────────────────────────────────────
+function filterItemSuggestions(q) {
+  const dd = document.getElementById('item-suggestions');
+  if (!dd) return;
+  const trimmed = q.trim().toLowerCase();
+  if (!trimmed) { dd.style.display = 'none'; return; }
+
+  // Get unique item names from history, sorted by most recent
+  const seen = new Set();
+  const matches = [];
+  state.expenses.slice().reverse().forEach(e => {
+    if (!seen.has(e.name) && e.name.toLowerCase().includes(trimmed)) {
+      seen.add(e.name);
+      // Count occurrences and get last date
+      const history = state.expenses.filter(x => x.name === e.name);
+      const lastDate = history.map(x=>x.date).sort().reverse()[0];
+      matches.push({ name: e.name, count: history.length, lastDate });
+    }
+  });
+
+  if (!matches.length) { dd.style.display = 'none'; return; }
+
+  dd.innerHTML = matches.slice(0,8).map(m => `
+    <div onclick="selectItemSuggestion('${escHtml(m.name).replace(/'/g,"&#39;")}')"
+      style="padding:9px 12px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center;border-bottom:0.5px solid var(--border);gap:8px">
+      <span style="font-weight:500">${escHtml(m.name)}</span>
+      <span style="font-size:11px;color:var(--txt3);white-space:nowrap">${m.count}× · last ${fmtDate(m.lastDate)}</span>
+    </div>`).join('');
+  dd.style.display = 'block';
+  document.addEventListener('click', hideItemSuggestionsOutside);
+}
+
+function hideItemSuggestionsOutside(e) {
+  const dd = document.getElementById('item-suggestions');
+  const inp = document.getElementById('f-name');
+  if (dd && inp && !dd.contains(e.target) && e.target !== inp) {
+    dd.style.display = 'none';
+    document.removeEventListener('click', hideItemSuggestionsOutside);
+  }
+}
+
+function selectItemSuggestion(name) {
+  const inp = document.getElementById('f-name');
+  const dd = document.getElementById('item-suggestions');
+  if (inp) inp.value = name;
+  if (dd) dd.style.display = 'none';
+  document.removeEventListener('click', hideItemSuggestionsOutside);
+  // Also pre-fill store & category from last purchase of this item
+  const last = state.expenses.slice().reverse().find(e => e.name === name);
+  if (last) {
+    const storeEl = document.getElementById('f-store');
+    const catEl = document.getElementById('f-cat');
+    const catSearchEl = document.getElementById('f-cat-search');
+    if (storeEl && !storeEl.value) storeEl.value = last.store || '';
+    if (catEl) catEl.value = last.catId;
+    if (catSearchEl) {
+      const cat = state.categories.find(c => c.id === last.catId);
+      if (cat) catSearchEl.value = cat.emoji + ' ' + cat.name;
+    }
+  }
+}
+
+function setCurrency(c) {
+  // Save current form values before switching currency
+  const amt = document.getElementById('f-amount')?.value;
+  const name = document.getElementById('f-name')?.value;
+  const store = document.getElementById('f-store')?.value;
+  const notes = document.getElementById('f-notes')?.value;
+  const qty = document.getElementById('f-qty')?.value;
+  const up = document.getElementById('f-unit-price')?.value;
+  const date = document.getElementById('f-date')?.value;
+  const catId = document.getElementById('f-cat')?.value;
+  state.currency = c;
+  state._formDraft = { amt, name, store, notes, qty, up, date, catId };
+  render();
+}
 
 function toggleQuickCat() {
   const panel = document.getElementById('quick-cat-panel');
@@ -530,10 +662,15 @@ function quickAddCategory() {
   state.categories.push({id, name, emoji, color});
   save();
   toast(`"${name}" added!`);
-  const select = document.getElementById('f-cat');
-  if (select) {
-    select.innerHTML = state.categories.map(c => `<option value="${c.id}" ${c.id===id?'selected':''}>${c.emoji} ${c.name}</option>`).join('');
-    select.value = id;
+  // Select the new category in the searchable input
+  selectCat(id, emoji + ' ' + name);
+  // Rebuild dropdown options
+  const dd = document.getElementById('cat-dropdown');
+  if (dd) {
+    dd.innerHTML = state.categories.map(c=>`<div class="cat-option" data-id="${c.id}" data-label="${escHtml(c.emoji+' '+c.name)}" onclick="selectCat('${c.id}','${escHtml(c.emoji+' '+c.name)}')" style="padding:9px 12px;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:8px;border-bottom:0.5px solid var(--border)">
+      <span style="width:22px;height:22px;border-radius:6px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:13px">${c.emoji}</span>
+      <span style="color:${c.color};font-weight:500">${escHtml(c.name)}</span>
+    </div>`).join('');
   }
   const panel = document.getElementById('quick-cat-panel');
   if (panel) panel.style.display = 'none';
@@ -602,12 +739,18 @@ async function addExpense() {
 }
 
 function clearForm() {
-  ['f-name','f-store','f-amount','f-notes','f-unit-price','f-qty'].forEach(id => {
+  // Only clear item-specific fields; preserve store & category
+  ['f-name','f-amount','f-notes','f-unit-price','f-qty'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
   const dt = document.getElementById('f-date');
   if(dt) dt.value = new Date().toISOString().split('T')[0];
   ['amt-preview','qty-total'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=''; });
+  // Preserve store & category in draft
+  const store = document.getElementById('f-store')?.value || '';
+  const catId = document.getElementById('f-cat')?.value || '';
+  const catLabel = document.getElementById('f-cat-search')?.value || '';
+  state._formDraft = { store, catId, catLabel };
 }
 
 // ── LIST TAB ──────────────────────────────────────────────────
@@ -634,6 +777,51 @@ function liveSearch() {
   if (el) el.innerHTML = renderGroupedList(q);
 }
 
+function renderItemHistoryChart(itemName) {
+  // Find all purchases of this exact item (case-insensitive)
+  const lower = itemName.toLowerCase();
+  const history = state.expenses
+    .filter(e => e.name.toLowerCase() === lower)
+    .sort((a,b) => a.date.localeCompare(b.date));
+  if (history.length < 2) return ''; // Only show chart if 2+ purchases
+
+  const max = Math.max(...history.map(e => e.amtEur), 1);
+  const total = history.reduce((a,e) => a+e.amtEur, 0);
+  const avg = total / history.length;
+  const last = history[history.length-1];
+  const daysSince = Math.round((new Date() - new Date(last.date+'T00:00:00')) / 86400000);
+
+  const bars = history.map(e => {
+    const pct = Math.max(4, (e.amtEur/max)*100);
+    return `<div class="bar-row">
+      <div class="bar-label" style="width:80px;font-size:10px">${fmtDate(e.date).replace(' 2025','').replace(' 2026','')}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent)">${pct>25?fmtEur(e.amtEur):''}</div></div>
+      <div class="bar-val">${fmtEur(e.amtEur)}</div>
+    </div>`;
+  }).join('');
+
+  return `<div class="card" style="margin-bottom:12px">
+    <div class="card-title" style="margin-bottom:8px">
+      📈 Purchase history · ${escHtml(history[0].name)}
+    </div>
+    <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="background:var(--bg);border-radius:var(--rad);padding:8px 12px;font-size:11px">
+        <div style="color:var(--txt3);margin-bottom:2px">PURCHASES</div>
+        <div style="font-weight:600;font-family:var(--fm)">${history.length}×</div>
+      </div>
+      <div style="background:var(--bg);border-radius:var(--rad);padding:8px 12px;font-size:11px">
+        <div style="color:var(--txt3);margin-bottom:2px">AVG PRICE</div>
+        <div style="font-weight:600;font-family:var(--fm)">${fmtEur(avg)}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:var(--rad);padding:8px 12px;font-size:11px">
+        <div style="color:var(--txt3);margin-bottom:2px">LAST BOUGHT</div>
+        <div style="font-weight:600;font-family:var(--fm);color:${daysSince<=3?'var(--success)':daysSince<=14?'var(--warn)':'var(--danger)'}">${daysSince===0?'Today':daysSince===1?'Yesterday':daysSince+'d ago'}</div>
+      </div>
+    </div>
+    <div class="bar-chart">${bars}</div>
+  </div>`;
+}
+
 function renderGroupedList(q) {
   let exps = state.expenses.slice().reverse();
   if (q) {
@@ -648,6 +836,9 @@ function renderGroupedList(q) {
     });
   }
   if (!exps.length) return `<div class="card"><div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses found</div></div></div>`;
+
+  // Show history chart when searching by item with a query
+  const historyChart = (q && state.searchMode === 'item') ? renderItemHistoryChart(q) : '';
 
   if (state.searchMode === 'store') {
     const groups = {};
@@ -687,7 +878,7 @@ function renderGroupedList(q) {
       }).join('');
   }
 
-  return `<div class="card">${renderExpenseItems(exps)}</div>`;
+  return historyChart + `<div class="card">${renderExpenseItems(exps)}</div>`;
 }
 
 function renderExpenseItems(exps) {
@@ -824,6 +1015,34 @@ async function saveEdit() {
   }
 }
 
+// ── CATEGORY SYNC ─────────────────────────────────────────────
+async function syncCategoriesToSheets() {
+  if (!navigator.onLine) return;
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'saveCategories', categories: state.categories }),
+    });
+  } catch(e) { console.error('syncCategories:', e); }
+}
+
+async function loadCategoriesFromSheets() {
+  try {
+    const r = await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'loadCategories' }),
+    });
+    const result = await r.json();
+    if (result.status === 'ok' && result.categories && result.categories.length) {
+      // Merge: keep any local-only cats not in sheet, but prefer sheet version
+      const sheetIds = new Set(result.categories.map(c => c.id));
+      const localOnly = state.categories.filter(c => !sheetIds.has(c.id));
+      state.categories = [...result.categories, ...localOnly];
+      save(); render();
+    }
+  } catch(e) { console.error('loadCategories:', e); }
+}
+
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -955,7 +1174,46 @@ function renderAnalytics() {
     </div>
   </div>
   ${catBars ? `<div class="card"><div class="card-title">By category — ${periodLabel}</div><div class="bar-chart">${catBars}</div></div>` : `<div class="empty"><div class="empty-icon">📊</div><div class="empty-text">No expenses yet</div></div>`}
-  ${timeBars ? `<div class="card"><div class="card-title">${period==='year'?'Monthly':'Daily'} breakdown</div><div class="bar-chart">${timeBars}</div></div>` : ''}`;
+  ${timeBars ? `<div class="card"><div class="card-title">${period==='year'?'Monthly':'Daily'} breakdown</div><div class="bar-chart">${timeBars}</div></div>` : ''}
+  ${renderAnalyticsBreakdown(filtered)}`;
+}
+
+// ── ANALYTICS BREAKDOWN ───────────────────────────────────────
+function renderAnalyticsBreakdown(filtered) {
+  if (!filtered.length) return '';
+  const mode = state.analyticsMode || 'item';
+
+  const modeTabs = ['item','store','day','month'].map(m =>
+    `<button class="stab ${mode===m?'active':''}" onclick="state.analyticsMode='${m}';render()">${{item:'By Item',store:'By Store',day:'By Day',month:'By Month'}[m]}</button>`
+  ).join('');
+
+  let groups = {};
+  if (mode === 'item') {
+    filtered.forEach(e => { groups[e.name] = (groups[e.name]||0) + e.amtEur; });
+  } else if (mode === 'store') {
+    filtered.forEach(e => { const k = e.store||'No store'; groups[k] = (groups[k]||0) + e.amtEur; });
+  } else if (mode === 'day') {
+    filtered.forEach(e => { groups[e.date] = (groups[e.date]||0) + e.amtEur; });
+  } else if (mode === 'month') {
+    filtered.forEach(e => { const k = e.date.slice(0,7); groups[k] = (groups[k]||0) + e.amtEur; });
+  }
+
+  const sorted = Object.entries(groups).sort((a,b) => b[1]-a[1]);
+  const max = sorted[0]?.[1] || 1;
+
+  const bars = sorted.map(([label, amt]) => {
+    const pct = Math.max(4, (amt/max)*100);
+    const displayLabel = mode === 'day' ? fmtDate(label) : mode === 'month' ? new Date(label+'-01T00:00:00').toLocaleDateString('en',{month:'short',year:'numeric'}) : label;
+    return `<div class="bar-row">
+      <div class="bar-label" title="${escHtml(displayLabel)}" style="width:90px">${escHtml(displayLabel.slice(0,11))}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent)">${pct>22?fmtEur(amt):''}</div></div>
+      <div class="bar-val">${fmtEur(amt)}</div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="filter-row" style="margin-top:4px">${modeTabs}</div>
+  <div class="card"><div class="bar-chart">${bars}</div></div>`;
 }
 
 // ── LOANS ─────────────────────────────────────────────────────
@@ -1040,7 +1298,7 @@ function addCategory() {
   if (!name) { toast('Please enter a name'); return; }
   const id = 'cat_' + name.toLowerCase().replace(/\s+/g,'_') + '_' + Date.now();
   state.categories.push({id, name, emoji, color});
-  save(); toast('Category added!'); render();
+  save(); syncCategoriesToSheets(); toast('Category added!'); render();
 }
 
 function deleteCat(id) {
@@ -1049,7 +1307,7 @@ function deleteCat(id) {
   if (!confirm('Delete this category?')) return;
   state.expenses = state.expenses.map(e => e.catId === id ? {...e, catId:'other'} : e);
   state.categories = state.categories.filter(c => c.id !== id);
-  save(); render();
+  save(); syncCategoriesToSheets(); render();
 }
 
 function exportCSV() {
@@ -1075,6 +1333,7 @@ fetchRate();
 render();
 // Auto-load from sheets on startup
 loadFromSheets();
+loadCategoriesFromSheets();
 </script>
 </body>
 </html>
