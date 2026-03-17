@@ -486,7 +486,7 @@ function renderAdd() {
           <div style="font-size:11px;color:var(--txt2);font-weight:500;margin-bottom:8px">Quick add category</div>
           <div style="display:grid;grid-template-columns:1fr 48px 60px;gap:6px;align-items:center">
             <input id="qc-name" placeholder="Name" style="font-size:13px;padding:8px 9px">
-            <input id="qc-emoji" placeholder="🏷️" maxlength="2" style="font-size:16px;text-align:center;padding:8px 4px">
+            <input id="qc-emoji" placeholder="🏷️" style="font-size:16px;text-align:center;padding:8px 4px">
             <input id="qc-color" type="color" value="#6366f1" style="height:38px;padding:2px 4px;cursor:pointer;width:100%">
           </div>
           <div style="display:flex;gap:6px;margin-top:8px">
@@ -655,7 +655,8 @@ function toggleQuickCat() {
 
 function quickAddCategory() {
   const name = document.getElementById('qc-name')?.value.trim();
-  const emoji = document.getElementById('qc-emoji')?.value.trim() || '📦';
+  const rawEmoji = document.getElementById('qc-emoji')?.value.trim() || '📦';
+  const emoji = [...rawEmoji][0] || '📦';
   const color = document.getElementById('qc-color')?.value || '#6366f1';
   if (!name) { toast('Please enter a name'); return; }
   const id = 'cat_' + name.toLowerCase().replace(/\s+/g,'_') + '_' + Date.now();
@@ -838,7 +839,14 @@ function renderGroupedList(q) {
   if (!exps.length) return `<div class="card"><div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses found</div></div></div>`;
 
   // Show history chart when searching by item with a query
-  const historyChart = (q && state.searchMode === 'item') ? renderItemHistoryChart(q) : '';
+  // Only show if results contain exactly one distinct item name
+  let historyChart = '';
+  if (q && state.searchMode === 'item') {
+    const distinctNames = [...new Set(exps.map(e => e.name.toLowerCase()))];
+    if (distinctNames.length === 1) {
+      historyChart = renderItemHistoryChart(exps[0].name);
+    }
+  }
 
   if (state.searchMode === 'store') {
     const groups = {};
@@ -1276,7 +1284,7 @@ function renderSettings() {
     <div class="card-title">Add New Category</div>
     <div class="form-grid">
       <div class="form-group"><label>Name</label><input id="nc-name" placeholder="e.g. Gym, Insurance..."></div>
-      <div class="form-group"><label>Emoji</label><input id="nc-emoji" placeholder="🏋️" maxlength="2" style="font-size:20px;text-align:center"></div>
+      <div class="form-group"><label>Emoji</label><input id="nc-emoji" placeholder="🏋️" style="font-size:20px;text-align:center"></div>
       <div class="form-group full"><label>Color</label><input id="nc-color" type="color" value="#6366f1"></div>
     </div>
     <div class="btn-row"><button class="btn btn-primary" onclick="addCategory()">Add Category</button></div>
@@ -1293,7 +1301,8 @@ function renderSettings() {
 
 function addCategory() {
   const name = document.getElementById('nc-name')?.value.trim();
-  const emoji = document.getElementById('nc-emoji')?.value.trim() || '📦';
+  const rawEmoji = document.getElementById('nc-emoji')?.value.trim() || '📦';
+  const emoji = [...rawEmoji][0] || '📦'; // Take only the first emoji character
   const color = document.getElementById('nc-color')?.value || '#6366f1';
   if (!name) { toast('Please enter a name'); return; }
   const id = 'cat_' + name.toLowerCase().replace(/\s+/g,'_') + '_' + Date.now();
