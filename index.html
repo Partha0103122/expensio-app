@@ -838,14 +838,11 @@ function renderGroupedList(q) {
   }
   if (!exps.length) return `<div class="card"><div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses found</div></div></div>`;
 
-  // Show history chart when searching by item with a query
-  // Only show if results contain exactly one distinct item name
+  // Show history chart per distinct item name when searching by item
   let historyChart = '';
   if (q && state.searchMode === 'item') {
-    const distinctNames = [...new Set(exps.map(e => e.name.toLowerCase()))];
-    if (distinctNames.length === 1) {
-      historyChart = renderItemHistoryChart(exps[0].name);
-    }
+    const distinctNames = [...new Set(exps.map(e => e.name))];
+    historyChart = distinctNames.map(name => renderItemHistoryChart(name)).join('');
   }
 
   if (state.searchMode === 'store') {
