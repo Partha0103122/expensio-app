@@ -490,7 +490,14 @@ function renderAdd() {
       </div>
       <div class="form-group">
         <label>Store / Vendor</label>
-        <input id="f-store" placeholder="Albert Heijn, Jumbo..." autocomplete="off" value="${escHtml(defaultStore)}">
+        <div style="position:relative">
+          <input id="f-store" placeholder="Albert Heijn, Jumbo..." autocomplete="off" value="${escHtml(defaultStore)}"
+            oninput="filterStoreSuggestions(this.value)"
+            onfocus="filterStoreSuggestions(this.value)"
+            onblur="setTimeout(()=>{const d=document.getElementById('store-suggestions');if(d)d.style.display='none'},150)"
+            style="width:100%">
+          <div id="store-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--border2);border-radius:var(--rad);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
+        </div>
       </div>
       <div class="form-group">
         <label style="display:flex;align-items:center;justify-content:space-between">
@@ -502,6 +509,7 @@ function renderAdd() {
             value="${escHtml(defaultCat.emoji + ' ' + defaultCat.name)}"
             oninput="filterCatDropdown(this.value)"
             onfocus="showCatDropdown()"
+            onblur="setTimeout(()=>{const d=document.getElementById('cat-dropdown');if(d)d.style.display='none'},150)"
             style="width:100%">
           <input type="hidden" id="f-cat" value="${defaultCatId}">
           <div id="cat-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--border2);border-radius:var(--rad);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)">
@@ -657,6 +665,33 @@ function selectItemSuggestion(name) {
   }
 }
 
+function filterStoreSuggestions(q) {
+  const dd = document.getElementById('store-suggestions');
+  if (!dd) return;
+  const trimmed = q.trim().toLowerCase();
+  // Get unique store names from history
+  const seen = new Set();
+  const matches = [];
+  state.expenses.slice().reverse().forEach(e => {
+    if (e.store && !seen.has(e.store) && e.store.toLowerCase().includes(trimmed)) {
+      seen.add(e.store);
+      matches.push(e.store);
+    }
+  });
+  if (!matches.length) { dd.style.display = 'none'; return; }
+  dd.innerHTML = matches.slice(0, 8).map(s =>
+    `<div onclick="selectStoreSuggestion('${escHtml(s).replace(/'/g,"&#39;")}')"
+      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);font-weight:500">${escHtml(s)}</div>`
+  ).join('');
+  dd.style.display = 'block';
+}
+function selectStoreSuggestion(name) {
+  const inp = document.getElementById('f-store');
+  const dd = document.getElementById('store-suggestions');
+  if (inp) inp.value = name;
+  if (dd) dd.style.display = 'none';
+}
+
 function setCurrency(c) {
   // Save current form values before switching currency
   const amt = document.getElementById('f-amount')?.value;
@@ -720,14 +755,15 @@ function updateAmtPreview() {
 }
 
 function updateQtyTotal() {
-  const qty = parseFloat(document.getElementById('f-qty')?.value || 1);
+  const qty = parseFloat(document.getElementById('f-qty')?.value || 0);
   const up = parseFloat(document.getElementById('f-unit-price')?.value || 0);
   const el = document.getElementById('qty-total');
-  if (!el || !up || !qty) { if(el) el.textContent=''; return; }
+  if (!el) return;
+  if (!up || !qty) { el.textContent = ''; return; }
   const total = qty * up;
   el.textContent = `Total: ${state.currency === 'EUR' ? fmtEur(total) : fmtInr(total)}`;
   const amtEl = document.getElementById('f-amount');
-  if (amtEl && !amtEl.value) { amtEl.value = total.toFixed(2); updateAmtPreview(); }
+  if (amtEl) { amtEl.value = total.toFixed(2); updateAmtPreview(); }
 }
 
 async function addExpense() {
