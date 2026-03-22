@@ -812,36 +812,50 @@ function openBarDetail(title, expIds) {
   const total = exps.reduce((a,e) => a+e.amtEur, 0);
   document.getElementById('bar-detail-title').textContent = title + '  ·  ' + fmtEur(total);
 
-  let html = '';
-  if (!exps.length) {
-    html = '<div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses</div></div>';
-  } else {
-    // Group by store
-    const storeGroups = {};
-    exps.forEach(e => {
-      const k = e.store || 'No store';
-      if (!storeGroups[k]) storeGroups[k] = [];
-      storeGroups[k].push(e);
-    });
-    const storeEntries = Object.entries(storeGroups).sort((a,b) =>
-      b[1].reduce((s,e)=>s+e.amtEur,0) - a[1].reduce((s,e)=>s+e.amtEur,0)
-    );
-    if (storeEntries.length === 1) {
-      // Single store — no need for group headers
-      html = '<div class="card" style="margin:0">' + renderExpenseItems(exps.slice().sort((a,b)=>b.date.localeCompare(a.date))) + '</div>';
-    } else {
-      html = storeEntries.map(([store, items]) => {
-        const stTotal = items.reduce((a,e)=>a+e.amtEur,0);
-        return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
-          <span>🏪 ${escHtml(store)}</span>
-          <span style="font-family:var(--fm);font-size:12px">${fmtEur(stTotal)}</span>
-        </div>
-        <div class="card" style="margin-bottom:8px">${renderExpenseItems(items.slice().sort((a,b)=>b.date.localeCompare(a.date)))}</div>`;
-      }).join('');
+  // Group by store, sorted by total descending
+  const storeGroups = {};
+  exps.forEach(e => {
+    const k = e.store || 'No store';
+    if (!storeGroups[k]) storeGroups[k] = [];
+    storeGroups[k].push(e);
+  });
+  const storeEntries = Object.entries(storeGroups).sort((a,b) =>
+    b[1].reduce((s,e)=>s+e.amtEur,0) - a[1].reduce((s,e)=>s+e.amtEur,0)
+  );
+
+  // Track which stores are expanded within this modal (separate from Expenses tab state)
+  state._modalStoreExpanded = {};
+
+  function renderModalBody() {
+    if (!exps.length) {
+      return '<div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses</div></div>';
     }
+    if (storeEntries.length === 1) {
+      return '<div class="card" style="margin:0">' + renderExpenseItems(exps.slice().sort((a,b)=>b.date.localeCompare(a.date))) + '</div>';
+    }
+    return storeEntries.map(([store, items]) => {
+      const stTotal = items.reduce((a,e)=>a+e.amtEur,0);
+      const isOpen = !!state._modalStoreExpanded[store];
+      const safeKey = encodeURIComponent(store);
+      return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;margin-top:4px" onclick="toggleModalStore('${safeKey}')">
+        <span>🏪 ${escHtml(store)}</span>
+        <span style="display:flex;align-items:center;gap:8px;font-family:var(--fm);font-size:12px">
+          <span>${fmtEur(stTotal)}</span>
+          <span style="font-size:11px;opacity:0.5">${isOpen ? '▲' : '▼'}</span>
+        </span>
+      </div>
+      ${isOpen ? `<div class="card" style="margin-bottom:8px">${renderExpenseItems(items.slice().sort((a,b)=>b.date.localeCompare(a.date)))}</div>` : ''}`;
+    }).join('');
   }
 
-  document.getElementById('bar-detail-body').innerHTML = html;
+  // Expose toggle function globally so onclick can call it
+  window.toggleModalStore = function(safeKey) {
+    const store = decodeURIComponent(safeKey);
+    state._modalStoreExpanded[store] = !state._modalStoreExpanded[store];
+    document.getElementById('bar-detail-body').innerHTML = renderModalBody();
+  };
+
+  document.getElementById('bar-detail-body').innerHTML = renderModalBody();
   document.getElementById('bar-detail-modal').style.display = 'flex';
 }
 function closeBarDetail() {
