@@ -128,8 +128,8 @@
   .bar-chart{padding:4px 0}
   .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
   .bar-label{font-size:11px;color:var(--txt2);width:72px;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bar-track{flex:1;background:var(--bg);border-radius:5px;height:22px;overflow:hidden}
-  .bar-fill{height:100%;border-radius:5px;display:flex;align-items:center;padding:0 7px;font-size:10px;font-weight:600;color:#fff;min-width:4px;transition:width .5s ease}
+  .bar-track{flex:1;background:var(--bg);border-radius:5px;height:22px;overflow:visible;position:relative}
+  .bar-fill{height:100%;border-radius:5px;display:flex;align-items:center;font-size:10px;font-weight:600;color:#fff;min-width:4px;transition:width .5s ease;overflow:hidden}
   .bar-val{font-size:11px;color:var(--txt2);font-family:var(--fm);width:58px;text-align:right;flex-shrink:0}
 
   .cat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
@@ -183,7 +183,7 @@
         <div class="rate-dot loading" id="rate-dot"></div>
         <span id="rate-display">Loading...</span>
       </div>
-      <div class="sync-btn" id="refresh-btn" onclick="refreshFromSheets()" title="Refresh from Sheets">
+      <div class="sync-btn" id="refresh-btn" onclick="location.reload()" title="Refresh app">
         <span id="refresh-icon">🔄</span>
         <span id="refresh-label">Refresh</span>
       </div>
@@ -203,6 +203,17 @@
   <div class="content" id="content"></div>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- Bar Detail Modal -->
+<div id="bar-detail-modal" style="display:none;position:fixed;inset:0;z-index:1001;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeBarDetail()">
+  <div style="background:var(--card);border-radius:var(--rad-lg) var(--rad-lg) 0 0;padding:20px 16px 32px;width:100%;max-width:680px;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div id="bar-detail-title" style="font-size:15px;font-weight:600"></div>
+      <span onclick="closeBarDetail()" style="font-size:20px;cursor:pointer;color:var(--txt3);padding:2px 6px">✕</span>
+    </div>
+    <div id="bar-detail-body"></div>
+  </div>
+</div>
 
 <!-- Edit Modal -->
 <div id="edit-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center">
@@ -256,6 +267,9 @@ let state = {
     {id:'shopping',name:'Shopping',emoji:'🛍️',color:'#db2777'},
     {id:'entertainment',name:'Entertainment',emoji:'🎬',color:'#ea580c'},
     {id:'other',name:'Other',emoji:'📦',color:'#6b7280'},
+    {id:'bus_card',name:'Bus Card',emoji:'🚍',color:'#0284c7'},
+    {id:'clothes_partha',name:'Clothes for Partha',emoji:'👕',color:'#7c3aed'},
+    {id:'vegetables',name:'Vegetables',emoji:'🥦',color:'#16a34a'},
   ],
   currency: 'EUR',
   currentTab: 'add',
@@ -295,6 +309,19 @@ async function loadFromSheets() {
     const data = await r.json();
     const rows = data.values || [];
     if (!rows.length) { updateSyncBtn('refresh-btn','refresh-icon','refresh-label','','🔄','Refresh'); return; }
+
+    // Auto-create any categories found in sheet that don't exist locally
+    const uniqueCatNames = [...new Set(rows.map(r => r[4]||'Other').filter(Boolean))];
+    uniqueCatNames.forEach(name => {
+      if (!state.categories.find(c => c.name === name)) {
+        const colors = ['#0284c7','#7c3aed','#16a34a','#d97706','#dc2626','#0891b2','#db2777','#ea580c','#6b7280'];
+        const emojis = ['🏷️','⭐','💰','🎯','🔖','📌','🗂️','💼','🧾'];
+        const idx = state.categories.length % colors.length;
+        const id = 'cat_' + name.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'') + '_auto';
+        state.categories.push({ id, name, emoji: emojis[idx], color: colors[idx] });
+      }
+    });
+    save();
     const sheetExpenses = rows.map(r => {
       const cat = state.categories.find(c => c.name === (r[4]||'Other')) || state.categories.find(c => c.id === 'other');
       return {
@@ -781,9 +808,11 @@ function liveSearch() {
 function renderItemHistoryChart(itemName) {
   // Find all purchases of this exact item (case-insensitive)
   const lower = itemName.toLowerCase();
+  console.log('[chart] looking for:', lower, '| total expenses:', state.expenses.length);
   const history = state.expenses
     .filter(e => e.name.toLowerCase() === lower)
     .sort((a,b) => a.date.localeCompare(b.date));
+  console.log('[chart] matches found:', history.length, history.map(e=>e.name));
   if (!history.length) return ''; // Item not found at all
   // Show chart for even a single purchase
 
@@ -795,10 +824,16 @@ function renderItemHistoryChart(itemName) {
 
   const bars = history.map(e => {
     const pct = Math.max(4, (e.amtEur/max)*100);
-    return `<div class="bar-row">
+    const ids = JSON.stringify([e.id]);
+    const titleStr = (history[0].name + ' — ' + fmtDate(e.date)).replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
       <div class="bar-label" style="width:80px;font-size:10px">${fmtDate(e.date).replace(' 2025','').replace(' 2026','')}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent)">${pct>25?fmtEur(e.amtEur):''}</div></div>
-      <div class="bar-val">${fmtEur(e.amtEur)}</div>
+      <div class="bar-track" style="position:relative">
+        <div class="bar-fill" style="width:${pct}%;background:var(--accent);position:relative">
+          ${pct>30?`<span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(e.amtEur)}</span>`:''}
+        </div>
+        ${pct<=30?`<span style="position:absolute;left:calc(${pct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(e.amtEur)}</span>`:''}
+      </div>
     </div>`;
   }).join('');
 
@@ -969,6 +1004,20 @@ function closeEditModal() {
   _editingId = null;
 }
 
+function openBarDetail(title, expIds) {
+  const ids = new Set(expIds);
+  const exps = state.expenses.filter(e => ids.has(e.id));
+  const total = exps.reduce((a,e) => a+e.amtEur, 0);
+  document.getElementById('bar-detail-title').textContent = title + '  ·  ' + fmtEur(total);
+  document.getElementById('bar-detail-body').innerHTML = exps.length
+    ? `<div class="card" style="margin:0">${renderExpenseItems(exps.slice().sort((a,b)=>b.date.localeCompare(a.date)))}</div>`
+    : `<div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses</div></div>`;
+  document.getElementById('bar-detail-modal').style.display = 'flex';
+}
+function closeBarDetail() {
+  document.getElementById('bar-detail-modal').style.display = 'none';
+}
+
 async function saveEdit() {
   const idx = state.expenses.findIndex(ex => ex.id === _editingId);
   if (idx === -1) return;
@@ -1092,12 +1141,14 @@ function renderAnalytics() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now - i*86400000);
       const ds = d.toISOString().split('T')[0];
-      timeSeries.push({ label: d.toLocaleDateString('en',{weekday:'short'}), val: filtered.filter(e=>e.date===ds).reduce((a,e)=>a+e.amtEur,0) });
+      const matched = filtered.filter(e=>e.date===ds);
+      timeSeries.push({ label: d.toLocaleDateString('en',{weekday:'short'}), fullLabel: d.toLocaleDateString('en',{weekday:'long',month:'short',day:'numeric'}), val: matched.reduce((a,e)=>a+e.amtEur,0), ids: matched.map(e=>e.id) });
     }
   } else if (period === 'year') {
     for (let m = 0; m < 12; m++) {
       const mStr = `${now.getFullYear()}-${String(m+1).padStart(2,'0')}`;
-      timeSeries.push({ label: new Date(now.getFullYear(),m,1).toLocaleDateString('en',{month:'short'}), val: filtered.filter(e=>e.date.startsWith(mStr)).reduce((a,e)=>a+e.amtEur,0) });
+      const matched = filtered.filter(e=>e.date.startsWith(mStr));
+      timeSeries.push({ label: new Date(now.getFullYear(),m,1).toLocaleDateString('en',{month:'short'}), fullLabel: new Date(now.getFullYear(),m,1).toLocaleDateString('en',{month:'long',year:'numeric'}), val: matched.reduce((a,e)=>a+e.amtEur,0), ids: matched.map(e=>e.id) });
     }
   }
   const maxTime = Math.max(...timeSeries.map(d=>d.val), 1);
@@ -1105,33 +1156,47 @@ function renderAnalytics() {
   const catBars = catSorted.length ? catSorted.map(([catId, amt]) => {
     const cat = state.categories.find(c=>c.id===catId) || {emoji:'📦',color:'#888',name:'Other'};
     const pct = Math.max(4, (amt/maxCat)*100);
-    return `<div class="bar-row">
+    const ids = JSON.stringify(filtered.filter(e=>e.catId===catId).map(e=>e.id));
+    const titleStr = (cat.emoji + ' ' + cat.name).replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
       <div class="bar-label" title="${cat.name}">${cat.emoji} ${cat.name.slice(0,8)}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${cat.color}">${pct>22?fmtEur(amt):''}</div></div>
-      <div class="bar-val">${fmtEur(amt)}</div>
+      <div class="bar-track" style="position:relative">
+        <div class="bar-fill" style="width:${pct}%;background:${cat.color};position:relative">
+          ${pct>30?`<span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(amt)}</span>`:''}
+        </div>
+        ${pct<=30?`<span style="position:absolute;left:calc(${pct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(amt)}</span>`:''}
+      </div>
     </div>`;
   }).join('') : '';
 
   const timeBars = timeSeries.filter(d=>d.val>0).length ? timeSeries.map(d => {
     const pct = Math.max(d.val>0?4:0, (d.val/maxTime)*100);
-    return `<div class="bar-row">
+    const ids = JSON.stringify(d.ids||[]);
+    const titleStr = (d.fullLabel||d.label).replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
       <div class="bar-label">${d.label}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent)">${pct>22?fmtEur(d.val):''}</div></div>
-      <div class="bar-val">${d.val>0?fmtEur(d.val):'-'}</div>
+      <div class="bar-track" style="position:relative">
+        <div class="bar-fill" style="width:${pct}%;background:var(--accent);position:relative">
+          ${pct>30?`<span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(d.val)}</span>`:''}
+        </div>
+        ${d.val>0&&pct<=30?`<span style="position:absolute;left:calc(${pct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(d.val)}</span>`:''}
+      </div>
     </div>`;
   }).join('') : '';
 
-  // 12-month overview
   const now12 = new Date();
   const monthlyData = [];
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now12.getFullYear(), now12.getMonth() - i, 1);
     const mStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const mTotal = state.expenses.filter(e=>e.date.startsWith(mStr)).reduce((a,e)=>a+e.amtEur,0);
-    const mLoan = state.expenses.filter(e=>e.date.startsWith(mStr)&&e.isLoanEMI).reduce((a,e)=>a+e.amtEur,0);
+    const mExps = state.expenses.filter(e=>e.date.startsWith(mStr));
+    const mTotal = mExps.reduce((a,e)=>a+e.amtEur,0);
+    const mLoan = mExps.filter(e=>e.isLoanEMI).reduce((a,e)=>a+e.amtEur,0);
     monthlyData.push({
       label: d.toLocaleDateString('en',{month:'short'}),
+      fullLabel: d.toLocaleDateString('en',{month:'long',year:'numeric'}),
       total: mTotal, loan: mLoan,
+      ids: mExps.map(e=>e.id),
       isCurrent: d.getMonth()===now12.getMonth() && d.getFullYear()===now12.getFullYear()
     });
   }
@@ -1140,15 +1205,18 @@ function renderAnalytics() {
     const totalPct = Math.max(d.total>0?3:0, (d.total/maxMonthly)*100);
     const loanPct = d.total>0 ? (d.loan/d.total)*totalPct : 0;
     const nonLoanPct = totalPct - loanPct;
-    return `<div class="bar-row">
+    const ids = JSON.stringify(d.ids||[]);
+    const titleStr = (d.fullLabel||d.label).replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
       <div class="bar-label" style="${d.isCurrent?'color:var(--accent);font-weight:600':''}">${d.label}${d.isCurrent?' ◂':''}</div>
-      <div class="bar-track">
-        <div style="display:flex;height:100%;border-radius:5px;overflow:hidden">
-          <div style="width:${nonLoanPct}%;background:#2563eb;min-width:${d.total-d.loan>0?3:0}px"></div>
-          <div style="width:${loanPct}%;background:#0891b2;min-width:${d.loan>0?3:0}px"></div>
+      <div class="bar-track" style="position:relative">
+        <div style="display:flex;height:100%;border-radius:5px;overflow:hidden;width:${totalPct}%">
+          <div style="flex:${nonLoanPct};background:#2563eb;min-width:${d.total-d.loan>0?3:0}px"></div>
+          <div style="flex:${loanPct};background:#0891b2;min-width:${d.loan>0?3:0}px"></div>
         </div>
+        ${d.total>0&&totalPct<=30?`<span style="position:absolute;left:calc(${totalPct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(d.total)}</span>`:''}
+        ${d.total>0&&totalPct>30?`<span style="position:absolute;right:calc(${100-totalPct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(d.total)}</span>`:''}
       </div>
-      <div class="bar-val">${d.total>0?fmtEur(d.total):'-'}</div>
     </div>`;
   }).join('');
 
@@ -1204,16 +1272,34 @@ function renderAnalyticsBreakdown(filtered) {
     filtered.forEach(e => { const k = e.date.slice(0,7); groups[k] = (groups[k]||0) + e.amtEur; });
   }
 
+  // Build per-group expense ID lists for click-to-detail
+  const groupIds = {};
+  filtered.forEach(e => {
+    let k;
+    if (mode === 'item') k = e.name;
+    else if (mode === 'store') k = e.store||'No store';
+    else if (mode === 'day') k = e.date;
+    else k = e.date.slice(0,7);
+    if (!groupIds[k]) groupIds[k] = [];
+    groupIds[k].push(e.id);
+  });
+
   const sorted = Object.entries(groups).sort((a,b) => b[1]-a[1]);
   const max = sorted[0]?.[1] || 1;
 
   const bars = sorted.map(([label, amt]) => {
     const pct = Math.max(4, (amt/max)*100);
     const displayLabel = mode === 'day' ? fmtDate(label) : mode === 'month' ? new Date(label+'-01T00:00:00').toLocaleDateString('en',{month:'short',year:'numeric'}) : label;
-    return `<div class="bar-row">
+    const ids = JSON.stringify(groupIds[label]||[]);
+    const titleStr = displayLabel.replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
       <div class="bar-label" title="${escHtml(displayLabel)}" style="width:90px">${escHtml(displayLabel.slice(0,11))}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:var(--accent)">${pct>22?fmtEur(amt):''}</div></div>
-      <div class="bar-val">${fmtEur(amt)}</div>
+      <div class="bar-track" style="position:relative">
+        <div class="bar-fill" style="width:${pct}%;background:var(--accent);position:relative">
+          ${pct>30?`<span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(amt)}</span>`:''}
+        </div>
+        ${pct<=30?`<span style="position:absolute;left:calc(${pct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(amt)}</span>`:''}
+      </div>
     </div>`;
   }).join('');
 
@@ -1341,6 +1427,12 @@ render();
 // Auto-load from sheets on startup
 loadFromSheets();
 loadCategoriesFromSheets();
+// Background sync every 3 minutes
+setInterval(() => { if (navigator.onLine) loadFromSheets(); }, 3 * 60 * 1000);
+// Also sync when app comes back into focus (switching tabs/apps)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && navigator.onLine) loadFromSheets();
+});
 </script>
 </body>
 </html>
