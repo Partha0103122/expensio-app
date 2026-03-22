@@ -1129,10 +1129,48 @@ function renderExpenseItems(exps) {
         <div class="expense-eur">${fmtEur(e.amtEur)}</div>
         ${inrStr?`<div class="expense-inr">${inrStr}</div>`:''}
         <span class="del-btn" style="margin-right:4px" onclick="openEditModal(${e.id})">✏️ edit</span>
+        <span class="del-btn" style="margin-right:4px" onclick="copyToThisMonth(${e.id})">↩ copy</span>
         <span class="del-btn" onclick="deleteExpense(${e.id})">x remove</span>
       </div>
     </div>`;
   }).join('');
+}
+
+function copyToThisMonth(id) {
+  const src = state.expenses.find(e => e.id === id);
+  if (!src) return;
+
+  // Build new date: same day-of-month, current year+month
+  const now = new Date();
+  const srcDay = src.date.slice(8, 10); // DD from YYYY-MM-DD
+  const newMonth = String(now.getMonth() + 1).padStart(2, '0');
+  const newYear = now.getFullYear();
+  // Clamp day to last day of current month
+  const maxDay = new Date(newYear, now.getMonth() + 1, 0).getDate();
+  const day = String(Math.min(parseInt(srcDay), maxDay)).padStart(2, '0');
+  const newDate = `${newYear}-${newMonth}-${day}`;
+
+  // Check if an identical entry already exists this month
+  const already = state.expenses.find(e =>
+    e.name === src.name &&
+    e.store === src.store &&
+    e.catId === src.catId &&
+    e.date.slice(0, 7) === `${newYear}-${newMonth}`
+  );
+  if (already) {
+    if (!confirm(`"${src.name}" already exists in ${new Date(newDate+'T00:00:00').toLocaleDateString('en',{month:'long'})}. Copy anyway?`)) return;
+  }
+
+  const exp = {
+    ...src,
+    id: Date.now(),
+    date: newDate,
+  };
+  state.expenses.push(exp);
+  state.pendingSync.push(exp.id);
+  save(); render();
+  toast(`↩ Copied to ${fmtDate(newDate)}`);
+  if (navigator.onLine) setTimeout(() => syncToSheets(), 800);
 }
 
 async function deleteExpense(id) {
