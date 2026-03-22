@@ -129,7 +129,9 @@
   .bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px}
   .bar-label{font-size:11px;color:var(--txt2);width:72px;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .bar-track{flex:1;background:var(--bg);border-radius:5px;height:22px;overflow:visible;position:relative}
-  .bar-fill{height:100%;border-radius:5px;display:flex;align-items:center;font-size:10px;font-weight:600;color:#fff;min-width:4px;transition:width .5s ease;overflow:hidden}
+  .bar-fill{height:100%;border-radius:5px;min-width:4px;transition:width .5s ease;overflow:hidden;position:relative}
+  .bar-outside-label{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap;pointer-events:none}
+  .bar-inside-label{position:absolute;right:5px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap;pointer-events:none}
   .bar-val{font-size:11px;color:var(--txt2);font-family:var(--fm);width:58px;text-align:right;flex-shrink:0}
 
   .cat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
@@ -804,6 +806,47 @@ function toggleStoreGroup(safeKey) {
   state._storeExpanded[store] = !state._storeExpanded[store];
   render();
 }
+function openBarDetail(title, expIds) {
+  const ids = new Set(expIds);
+  const exps = state.expenses.filter(e => ids.has(e.id));
+  const total = exps.reduce((a,e) => a+e.amtEur, 0);
+  document.getElementById('bar-detail-title').textContent = title + '  ·  ' + fmtEur(total);
+
+  let html = '';
+  if (!exps.length) {
+    html = '<div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses</div></div>';
+  } else {
+    // Group by store
+    const storeGroups = {};
+    exps.forEach(e => {
+      const k = e.store || 'No store';
+      if (!storeGroups[k]) storeGroups[k] = [];
+      storeGroups[k].push(e);
+    });
+    const storeEntries = Object.entries(storeGroups).sort((a,b) =>
+      b[1].reduce((s,e)=>s+e.amtEur,0) - a[1].reduce((s,e)=>s+e.amtEur,0)
+    );
+    if (storeEntries.length === 1) {
+      // Single store — no need for group headers
+      html = '<div class="card" style="margin:0">' + renderExpenseItems(exps.slice().sort((a,b)=>b.date.localeCompare(a.date))) + '</div>';
+    } else {
+      html = storeEntries.map(([store, items]) => {
+        const stTotal = items.reduce((a,e)=>a+e.amtEur,0);
+        return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">
+          <span>🏪 ${escHtml(store)}</span>
+          <span style="font-family:var(--fm);font-size:12px">${fmtEur(stTotal)}</span>
+        </div>
+        <div class="card" style="margin-bottom:8px">${renderExpenseItems(items.slice().sort((a,b)=>b.date.localeCompare(a.date)))}</div>`;
+      }).join('');
+    }
+  }
+
+  document.getElementById('bar-detail-body').innerHTML = html;
+  document.getElementById('bar-detail-modal').style.display = 'flex';
+}
+function closeBarDetail() {
+  document.getElementById('bar-detail-modal').style.display = 'none';
+}
 
 function liveSearch() {
   const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
@@ -830,15 +873,15 @@ function renderItemHistoryChart(itemName) {
 
   const bars = history.map(e => {
     const pct = Math.max(4, (e.amtEur/max)*100);
-    const ids = JSON.stringify([e.id]);
-    const titleStr = (history[0].name + ' — ' + fmtDate(e.date)).replace(/'/g,"\\'");
-    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
+    const _ids = JSON.stringify([e.id]);
+    const _title = (escHtml(history[0].name) + ' — ' + fmtDate(e.date)).replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${_title}',${_ids})" style="cursor:pointer">
       <div class="bar-label" style="width:80px;font-size:10px">${fmtDate(e.date).replace(' 2025','').replace(' 2026','')}</div>
-      <div class="bar-track" style="position:relative">
-        <div class="bar-fill" style="width:${pct}%;background:var(--accent);position:relative">
-          ${pct>30?`<span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(e.amtEur)}</span>`:''}
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:var(--accent)">
+          ${pct>32?`<span class="bar-inside-label">${fmtEur(e.amtEur)}</span>`:''}
         </div>
-        ${pct<=30?`<span style="position:absolute;left:calc(${pct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(e.amtEur)}</span>`:''}
+        ${pct<=32?`<span class="bar-outside-label" style="left:calc(${pct}% + 4px)">${fmtEur(e.amtEur)}</span>`:''}
       </div>
     </div>`;
   }).join('');
@@ -905,7 +948,7 @@ function renderGroupedList(q) {
           <span>🏪 ${escHtml(store)}</span>
           <span style="display:flex;align-items:center;gap:8px;font-family:var(--fm)">
             <span>${fmtEur(total)} · last ${fmtDate(items[0].date)}</span>
-            <span style="font-size:12px;opacity:0.6">${isOpen ? '▲' : '▼'}</span>
+            <span style="font-size:11px;opacity:0.5">${isOpen ? '▲' : '▼'}</span>
           </span>
         </div>
         ${isOpen ? `<div class="card">${renderExpenseItems(items)}</div>` : ''}`;
@@ -1014,20 +1057,6 @@ function openEditModal(id) {
 function closeEditModal() {
   document.getElementById('edit-modal').style.display = 'none';
   _editingId = null;
-}
-
-function openBarDetail(title, expIds) {
-  const ids = new Set(expIds);
-  const exps = state.expenses.filter(e => ids.has(e.id));
-  const total = exps.reduce((a,e) => a+e.amtEur, 0);
-  document.getElementById('bar-detail-title').textContent = title + '  ·  ' + fmtEur(total);
-  document.getElementById('bar-detail-body').innerHTML = exps.length
-    ? `<div class="card" style="margin:0">${renderExpenseItems(exps.slice().sort((a,b)=>b.date.localeCompare(a.date)))}</div>`
-    : `<div class="empty"><div class="empty-icon">🧾</div><div class="empty-text">No expenses</div></div>`;
-  document.getElementById('bar-detail-modal').style.display = 'flex';
-}
-function closeBarDetail() {
-  document.getElementById('bar-detail-modal').style.display = 'none';
 }
 
 async function saveEdit() {
@@ -1153,14 +1182,14 @@ function renderAnalytics() {
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now - i*86400000);
       const ds = d.toISOString().split('T')[0];
-      const matched = filtered.filter(e=>e.date===ds);
-      timeSeries.push({ label: d.toLocaleDateString('en',{weekday:'short'}), fullLabel: d.toLocaleDateString('en',{weekday:'long',month:'short',day:'numeric'}), val: matched.reduce((a,e)=>a+e.amtEur,0), ids: matched.map(e=>e.id) });
+      const _m = filtered.filter(e=>e.date===ds);
+      timeSeries.push({ label: d.toLocaleDateString('en',{weekday:'short'}), fullLabel: d.toLocaleDateString('en',{weekday:'long',month:'short',day:'numeric'}), val: _m.reduce((a,e)=>a+e.amtEur,0), ids: _m.map(e=>e.id) });
     }
   } else if (period === 'year') {
     for (let m = 0; m < 12; m++) {
       const mStr = `${now.getFullYear()}-${String(m+1).padStart(2,'0')}`;
-      const matched = filtered.filter(e=>e.date.startsWith(mStr));
-      timeSeries.push({ label: new Date(now.getFullYear(),m,1).toLocaleDateString('en',{month:'short'}), fullLabel: new Date(now.getFullYear(),m,1).toLocaleDateString('en',{month:'long',year:'numeric'}), val: matched.reduce((a,e)=>a+e.amtEur,0), ids: matched.map(e=>e.id) });
+      const _m = filtered.filter(e=>e.date.startsWith(mStr));
+      timeSeries.push({ label: new Date(now.getFullYear(),m,1).toLocaleDateString('en',{month:'short'}), fullLabel: new Date(now.getFullYear(),m,1).toLocaleDateString('en',{month:'long',year:'numeric'}), val: _m.reduce((a,e)=>a+e.amtEur,0), ids: _m.map(e=>e.id) });
     }
   }
   const maxTime = Math.max(...timeSeries.map(d=>d.val), 1);
@@ -1168,34 +1197,35 @@ function renderAnalytics() {
   const catBars = catSorted.length ? catSorted.map(([catId, amt]) => {
     const cat = state.categories.find(c=>c.id===catId) || {emoji:'📦',color:'#888',name:'Other'};
     const pct = Math.max(4, (amt/maxCat)*100);
-    const ids = JSON.stringify(filtered.filter(e=>e.catId===catId).map(e=>e.id));
-    const titleStr = (cat.emoji + ' ' + cat.name).replace(/'/g,"\\'");
-    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
+    const _ids = JSON.stringify(filtered.filter(e=>e.catId===catId).map(e=>e.id));
+    const _title = (cat.emoji+' '+cat.name).replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${_title}',${_ids})" style="cursor:pointer">
       <div class="bar-label" title="${cat.name}">${cat.emoji} ${cat.name.slice(0,8)}</div>
-      <div class="bar-track" style="position:relative">
-        <div class="bar-fill" style="width:${pct}%;background:${cat.color};position:relative">
-          ${pct>30?`<span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(amt)}</span>`:''}
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:${cat.color}">
+          ${pct>32?`<span class="bar-inside-label">${fmtEur(amt)}</span>`:''}
         </div>
-        ${pct<=30?`<span style="position:absolute;left:calc(${pct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(amt)}</span>`:''}
+        ${pct<=32?`<span class="bar-outside-label" style="left:calc(${pct}% + 4px)">${fmtEur(amt)}</span>`:''}
       </div>
     </div>`;
   }).join('') : '';
 
   const timeBars = timeSeries.filter(d=>d.val>0).length ? timeSeries.map(d => {
     const pct = Math.max(d.val>0?4:0, (d.val/maxTime)*100);
-    const ids = JSON.stringify(d.ids||[]);
-    const titleStr = (d.fullLabel||d.label).replace(/'/g,"\\'");
-    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
+    const _ids = JSON.stringify(d.ids||[]);
+    const _title = (d.fullLabel||d.label).replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${_title}',${_ids})" style="cursor:pointer">
       <div class="bar-label">${d.label}</div>
-      <div class="bar-track" style="position:relative">
-        <div class="bar-fill" style="width:${pct}%;background:var(--accent);position:relative">
-          ${pct>30?`<span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(d.val)}</span>`:''}
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:var(--accent)">
+          ${pct>32?`<span class="bar-inside-label">${fmtEur(d.val)}</span>`:''}
         </div>
-        ${d.val>0&&pct<=30?`<span style="position:absolute;left:calc(${pct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(d.val)}</span>`:''}
+        ${d.val>0&&pct<=32?`<span class="bar-outside-label" style="left:calc(${pct}% + 4px)">${fmtEur(d.val)}</span>`:''}
       </div>
     </div>`;
   }).join('') : '';
 
+  // 12-month overview
   const now12 = new Date();
   const monthlyData = [];
   for (let i = 11; i >= 0; i--) {
@@ -1207,8 +1237,7 @@ function renderAnalytics() {
     monthlyData.push({
       label: d.toLocaleDateString('en',{month:'short'}),
       fullLabel: d.toLocaleDateString('en',{month:'long',year:'numeric'}),
-      total: mTotal, loan: mLoan,
-      ids: mExps.map(e=>e.id),
+      total: mTotal, loan: mLoan, ids: mExps.map(e=>e.id),
       isCurrent: d.getMonth()===now12.getMonth() && d.getFullYear()===now12.getFullYear()
     });
   }
@@ -1217,17 +1246,17 @@ function renderAnalytics() {
     const totalPct = Math.max(d.total>0?3:0, (d.total/maxMonthly)*100);
     const loanPct = d.total>0 ? (d.loan/d.total)*totalPct : 0;
     const nonLoanPct = totalPct - loanPct;
-    const ids = JSON.stringify(d.ids||[]);
-    const titleStr = (d.fullLabel||d.label).replace(/'/g,"\\'");
-    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
+    const _ids = JSON.stringify(d.ids||[]);
+    const _title = (d.fullLabel||d.label).replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${_title}',${_ids})" style="cursor:pointer">
       <div class="bar-label" style="${d.isCurrent?'color:var(--accent);font-weight:600':''}">${d.label}${d.isCurrent?' ◂':''}</div>
-      <div class="bar-track" style="position:relative">
+      <div class="bar-track">
         <div style="display:flex;height:100%;border-radius:5px;overflow:hidden;width:${totalPct}%">
           <div style="flex:${nonLoanPct};background:#2563eb;min-width:${d.total-d.loan>0?3:0}px"></div>
           <div style="flex:${loanPct};background:#0891b2;min-width:${d.loan>0?3:0}px"></div>
         </div>
-        ${d.total>0&&totalPct<=30?`<span style="position:absolute;left:calc(${totalPct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(d.total)}</span>`:''}
-        ${d.total>0&&totalPct>30?`<span style="position:absolute;right:calc(${100-totalPct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(d.total)}</span>`:''}
+        ${d.total>0&&totalPct<=32?`<span class="bar-outside-label" style="left:calc(${totalPct}% + 4px)">${fmtEur(d.total)}</span>`:''}
+        ${d.total>0&&totalPct>32?`<span style="position:absolute;right:calc(${100-totalPct}% + 5px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap;pointer-events:none">${fmtEur(d.total)}</span>`:''}
       </div>
     </div>`;
   }).join('');
@@ -1284,16 +1313,16 @@ function renderAnalyticsBreakdown(filtered) {
     filtered.forEach(e => { const k = e.date.slice(0,7); groups[k] = (groups[k]||0) + e.amtEur; });
   }
 
-  // Build per-group expense ID lists for click-to-detail
-  const groupIds = {};
+  // Build per-group expense ID lists
+  const _groupIds = {};
   filtered.forEach(e => {
     let k;
     if (mode === 'item') k = e.name;
     else if (mode === 'store') k = e.store||'No store';
     else if (mode === 'day') k = e.date;
     else k = e.date.slice(0,7);
-    if (!groupIds[k]) groupIds[k] = [];
-    groupIds[k].push(e.id);
+    if (!_groupIds[k]) _groupIds[k] = [];
+    _groupIds[k].push(e.id);
   });
 
   const sorted = Object.entries(groups).sort((a,b) => b[1]-a[1]);
@@ -1302,15 +1331,15 @@ function renderAnalyticsBreakdown(filtered) {
   const bars = sorted.map(([label, amt]) => {
     const pct = Math.max(4, (amt/max)*100);
     const displayLabel = mode === 'day' ? fmtDate(label) : mode === 'month' ? new Date(label+'-01T00:00:00').toLocaleDateString('en',{month:'short',year:'numeric'}) : label;
-    const ids = JSON.stringify(groupIds[label]||[]);
-    const titleStr = displayLabel.replace(/'/g,"\\'");
-    return `<div class="bar-row" onclick="openBarDetail('${titleStr}',${ids})" style="cursor:pointer">
+    const _ids = JSON.stringify(_groupIds[label]||[]);
+    const _title = displayLabel.replace(/'/g,"\\'");
+    return `<div class="bar-row" onclick="openBarDetail('${_title}',${_ids})" style="cursor:pointer">
       <div class="bar-label" title="${escHtml(displayLabel)}" style="width:90px">${escHtml(displayLabel.slice(0,11))}</div>
-      <div class="bar-track" style="position:relative">
-        <div class="bar-fill" style="width:${pct}%;background:var(--accent);position:relative">
-          ${pct>30?`<span style="position:absolute;right:4px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap">${fmtEur(amt)}</span>`:''}
+      <div class="bar-track">
+        <div class="bar-fill" style="width:${pct}%;background:var(--accent)">
+          ${pct>32?`<span class="bar-inside-label">${fmtEur(amt)}</span>`:''}
         </div>
-        ${pct<=30?`<span style="position:absolute;left:calc(${pct}% + 4px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap">${fmtEur(amt)}</span>`:''}
+        ${pct<=32?`<span class="bar-outside-label" style="left:calc(${pct}% + 4px)">${fmtEur(amt)}</span>`:''}
       </div>
     </div>`;
   }).join('');
