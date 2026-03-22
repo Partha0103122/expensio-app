@@ -494,7 +494,6 @@ function renderAdd() {
           <input id="f-store" placeholder="Albert Heijn, Jumbo..." autocomplete="off" value="${escHtml(defaultStore)}"
             oninput="filterStoreSuggestions(this.value)"
             onfocus="filterStoreSuggestions(this.value)"
-            onblur="setTimeout(()=>{const d=document.getElementById('store-suggestions');if(d)d.style.display='none'},150)"
             style="width:100%">
           <div id="store-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--border2);border-radius:var(--rad);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
         </div>
@@ -509,7 +508,6 @@ function renderAdd() {
             value="${escHtml(defaultCat.emoji + ' ' + defaultCat.name)}"
             oninput="filterCatDropdown(this.value)"
             onfocus="showCatDropdown()"
-            onblur="setTimeout(()=>{const d=document.getElementById('cat-dropdown');if(d)d.style.display='none'},150)"
             style="width:100%">
           <input type="hidden" id="f-cat" value="${defaultCatId}">
           <div id="cat-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--border2);border-radius:var(--rad);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)">
@@ -572,85 +570,108 @@ function renderAdd() {
   ` : ''}`;
 }
 
-function showCatDropdown() {
-  document.getElementById('cat-dropdown').style.display = 'block';
-  document.addEventListener('click', hideCatDropdownOutside);
-}
-function hideCatDropdownOutside(e) {
-  const dd = document.getElementById('cat-dropdown');
-  const inp = document.getElementById('f-cat-search');
-  if (dd && inp && !dd.contains(e.target) && e.target !== inp) {
-    dd.style.display = 'none';
-    document.removeEventListener('click', hideCatDropdownOutside);
+// ── SHARED KEYBOARD-NAVIGABLE DROPDOWN HELPER ────────────────
+// ddId: dropdown element id, inputId: input element id
+// getItems(): returns array of {html, onSelect()} 
+// onClose(): optional cleanup
+function _ddNav(inputId, ddId, getItems, onClose) {
+  const inp = document.getElementById(inputId);
+  const dd  = document.getElementById(ddId);
+  if (!inp || !dd) return;
+
+  let highlighted = -1;
+
+  function getRows() { return Array.from(dd.querySelectorAll('[data-dd-item]')); }
+
+  function highlight(idx) {
+    const rows = getRows();
+    rows.forEach((r,i) => r.style.background = i===idx ? 'var(--bg)' : '');
+    highlighted = idx;
+    if (rows[idx]) rows[idx].scrollIntoView({block:'nearest'});
   }
-}
-function filterCatDropdown(q) {
-  const dd = document.getElementById('cat-dropdown');
-  if (!dd) return;
-  dd.style.display = 'block';
-  const lower = q.toLowerCase();
-  dd.querySelectorAll('.cat-option').forEach(el => {
-    el.style.display = el.dataset.label.toLowerCase().includes(lower) ? '' : 'none';
+
+  function close() {
+    dd.style.display = 'none';
+    highlighted = -1;
+    if (onClose) onClose();
+  }
+
+  // Capture items once so key handler and mouse handler share the same array
+  const items = getItems();
+  if (!items.length) { close(); return; }
+
+  function selectIdx(idx) {
+    if (idx >= 0 && idx < items.length) { items[idx].onSelect(); close(); return true; }
+    return false;
+  }
+
+  // Remove old key handler if any
+  if (inp._ddKeyHandler) inp.removeEventListener('keydown', inp._ddKeyHandler);
+
+  inp._ddKeyHandler = function(e) {
+    if (dd.style.display === 'none' || !items.length) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      highlight(Math.min(highlighted + 1, items.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      highlight(Math.max(highlighted - 1, 0));
+    } else if (e.key === 'Enter') {
+      if (highlighted >= 0) { e.preventDefault(); selectIdx(highlighted); }
+    } else if (e.key === 'Tab') {
+      if (highlighted >= 0) selectIdx(highlighted);
+      else close();
+    } else if (e.key === 'Escape') {
+      close(); e.preventDefault();
+    }
+  };
+  inp.addEventListener('keydown', inp._ddKeyHandler);
+
+  // Outside mousedown closes
+  if (dd._ddOutsideHandler) document.removeEventListener('mousedown', dd._ddOutsideHandler);
+  dd._ddOutsideHandler = function(e) {
+    if (!dd.contains(e.target) && e.target !== inp) close();
+  };
+  document.addEventListener('mousedown', dd._ddOutsideHandler);
+
+  // Render items
+  dd.innerHTML = items.map((item, i) =>
+    `<div data-dd-item="${i}" style="cursor:pointer;border-bottom:0.5px solid var(--border)">${item.html}</div>`
+  ).join('');
+  Array.from(dd.querySelectorAll('[data-dd-item]')).forEach((row, i) => {
+    row.addEventListener('mousedown', e => { e.preventDefault(); selectIdx(i); });
+    row.addEventListener('mouseover', () => highlight(i));
   });
-}
-function selectCat(id, label) {
-  const hidden = document.getElementById('f-cat');
-  const search = document.getElementById('f-cat-search');
-  const dd = document.getElementById('cat-dropdown');
-  if (hidden) hidden.value = id;
-  if (search) search.value = label;
-  if (dd) dd.style.display = 'none';
-  document.removeEventListener('click', hideCatDropdownOutside);
+  dd.style.display = 'block';
+  highlighted = -1;
 }
 
 // ── ITEM AUTOCOMPLETE ─────────────────────────────────────────
 function filterItemSuggestions(q) {
-  const dd = document.getElementById('item-suggestions');
-  if (!dd) return;
   const trimmed = q.trim().toLowerCase();
-  if (!trimmed) { dd.style.display = 'none'; return; }
-
-  // Get unique item names from history, sorted by most recent
+  if (!trimmed) { const d = document.getElementById('item-suggestions'); if(d) d.style.display='none'; return; }
   const seen = new Set();
   const matches = [];
   state.expenses.slice().reverse().forEach(e => {
     if (!seen.has(e.name) && e.name.toLowerCase().includes(trimmed)) {
       seen.add(e.name);
-      // Count occurrences and get last date
       const history = state.expenses.filter(x => x.name === e.name);
       const lastDate = history.map(x=>x.date).sort().reverse()[0];
       matches.push({ name: e.name, count: history.length, lastDate });
     }
   });
-
-  if (!matches.length) { dd.style.display = 'none'; return; }
-
-  dd.innerHTML = matches.slice(0,8).map(m => `
-    <div onclick="selectItemSuggestion('${escHtml(m.name).replace(/'/g,"&#39;")}')"
-      style="padding:9px 12px;cursor:pointer;font-size:13px;display:flex;justify-content:space-between;align-items:center;border-bottom:0.5px solid var(--border);gap:8px">
+  _ddNav('f-name', 'item-suggestions', () => matches.slice(0,8).map(m => ({
+    html: `<div style="padding:9px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;gap:8px">
       <span style="font-weight:500">${escHtml(m.name)}</span>
       <span style="font-size:11px;color:var(--txt3);white-space:nowrap">${m.count}× · last ${fmtDate(m.lastDate)}</span>
-    </div>`).join('');
-  dd.style.display = 'block';
-  document.addEventListener('click', hideItemSuggestionsOutside);
-}
-
-function hideItemSuggestionsOutside(e) {
-  const dd = document.getElementById('item-suggestions');
-  const inp = document.getElementById('f-name');
-  if (dd && inp && !dd.contains(e.target) && e.target !== inp) {
-    dd.style.display = 'none';
-    document.removeEventListener('click', hideItemSuggestionsOutside);
-  }
+    </div>`,
+    onSelect: () => selectItemSuggestion(m.name)
+  })));
 }
 
 function selectItemSuggestion(name) {
   const inp = document.getElementById('f-name');
-  const dd = document.getElementById('item-suggestions');
   if (inp) inp.value = name;
-  if (dd) dd.style.display = 'none';
-  document.removeEventListener('click', hideItemSuggestionsOutside);
-  // Also pre-fill store & category from last purchase of this item
   const last = state.expenses.slice().reverse().find(e => e.name === name);
   if (last) {
     const storeEl = document.getElementById('f-store');
@@ -665,11 +686,9 @@ function selectItemSuggestion(name) {
   }
 }
 
+// ── STORE AUTOCOMPLETE ────────────────────────────────────────
 function filterStoreSuggestions(q) {
-  const dd = document.getElementById('store-suggestions');
-  if (!dd) return;
   const trimmed = q.trim().toLowerCase();
-  // Get unique store names from history
   const seen = new Set();
   const matches = [];
   state.expenses.slice().reverse().forEach(e => {
@@ -678,17 +697,35 @@ function filterStoreSuggestions(q) {
       matches.push(e.store);
     }
   });
-  if (!matches.length) { dd.style.display = 'none'; return; }
-  dd.innerHTML = matches.slice(0, 8).map(s =>
-    `<div onclick="selectStoreSuggestion('${escHtml(s).replace(/'/g,"&#39;")}')"
-      style="padding:9px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid var(--border);font-weight:500">${escHtml(s)}</div>`
-  ).join('');
-  dd.style.display = 'block';
+  if (!matches.length) { const d = document.getElementById('store-suggestions'); if(d) d.style.display='none'; return; }
+  _ddNav('f-store', 'store-suggestions', () => matches.slice(0,8).map(s => ({
+    html: `<div style="padding:9px 12px;font-size:13px;font-weight:500">${escHtml(s)}</div>`,
+    onSelect: () => { const inp = document.getElementById('f-store'); if(inp) inp.value = s; }
+  })));
 }
-function selectStoreSuggestion(name) {
-  const inp = document.getElementById('f-store');
-  const dd = document.getElementById('store-suggestions');
-  if (inp) inp.value = name;
+
+// ── CATEGORY DROPDOWN ─────────────────────────────────────────
+function showCatDropdown() { filterCatDropdown(document.getElementById('f-cat-search')?.value || ''); }
+
+function filterCatDropdown(q) {
+  const lower = q.toLowerCase();
+  const visibleCats = state.categories.filter(c => (c.emoji+' '+c.name).toLowerCase().includes(lower));
+  _ddNav('f-cat-search', 'cat-dropdown', () => visibleCats.map(c => ({
+    html: `<div class="cat-option" data-id="${c.id}" data-label="${escHtml(c.emoji+' '+c.name)}"
+      style="padding:9px 12px;font-size:13px;display:flex;align-items:center;gap:8px">
+      <span style="width:22px;height:22px;border-radius:6px;background:${c.color}22;display:flex;align-items:center;justify-content:center;font-size:13px">${c.emoji}</span>
+      <span style="color:${c.color};font-weight:500">${escHtml(c.name)}</span>
+    </div>`,
+    onSelect: () => selectCat(c.id, c.emoji+' '+c.name)
+  })));
+}
+
+function selectCat(id, label) {
+  const hidden = document.getElementById('f-cat');
+  const search = document.getElementById('f-cat-search');
+  const dd = document.getElementById('cat-dropdown');
+  if (hidden) hidden.value = id;
+  if (search) search.value = label;
   if (dd) dd.style.display = 'none';
 }
 
