@@ -484,6 +484,7 @@ function renderAdd() {
           <input id="f-name" placeholder="e.g. Tomatoes, Electricity bill..." autocomplete="off" value="${escHtml(draft.name||'')}"
             oninput="filterItemSuggestions(this.value)"
             onfocus="filterItemSuggestions(this.value)"
+            onkeydown="handleDDKey(event,'f-name','item-suggestions')"
             style="width:100%">
           <div id="item-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--border2);border-radius:var(--rad);z-index:50;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
         </div>
@@ -494,6 +495,7 @@ function renderAdd() {
           <input id="f-store" placeholder="Albert Heijn, Jumbo..." autocomplete="off" value="${escHtml(defaultStore)}"
             oninput="filterStoreSuggestions(this.value)"
             onfocus="filterStoreSuggestions(this.value)"
+            onkeydown="handleDDKey(event,'f-store','store-suggestions')"
             style="width:100%">
           <div id="store-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--border2);border-radius:var(--rad);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)"></div>
         </div>
@@ -508,6 +510,7 @@ function renderAdd() {
             value="${escHtml(defaultCat.emoji + ' ' + defaultCat.name)}"
             oninput="filterCatDropdown(this.value)"
             onfocus="showCatDropdown()"
+            onkeydown="handleDDKey(event,'f-cat-search','cat-dropdown')"
             style="width:100%">
           <input type="hidden" id="f-cat" value="${defaultCatId}">
           <div id="cat-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:0.5px solid var(--border2);border-radius:var(--rad);z-index:50;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.1)">
@@ -568,6 +571,38 @@ function renderAdd() {
   <div class="section-divider">Recent entries</div>
   <div class="card">${renderExpenseItems(state.expenses.slice().reverse().slice(0,5))}</div>
   ` : ''}`;
+}
+
+// ── INLINE KEY HANDLER for autocomplete inputs ───────────────
+// Called via onkeydown on each input — runs BEFORE form submit
+function handleDDKey(e, inputId, ddId) {
+  const dd = document.getElementById(ddId);
+  if (!dd || dd.style.display === 'none') return; // let key through normally
+  const rows = Array.from(dd.querySelectorAll('[data-dd-item]'));
+  if (!rows.length) return;
+
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === 'Escape' || e.key === 'Tab') {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  // Find current highlight
+  let highlighted = rows.findIndex(r => r.style.background !== '');
+
+  if (e.key === 'ArrowDown') {
+    highlighted = Math.min(highlighted + 1, rows.length - 1);
+    rows.forEach((r,i) => r.style.background = i===highlighted ? 'var(--bg)' : '');
+    rows[highlighted]?.scrollIntoView({block:'nearest'});
+  } else if (e.key === 'ArrowUp') {
+    highlighted = Math.max(highlighted - 1, 0);
+    rows.forEach((r,i) => r.style.background = i===highlighted ? 'var(--bg)' : '');
+    rows[highlighted]?.scrollIntoView({block:'nearest'});
+  } else if (e.key === 'Enter' || e.key === 'Tab') {
+    if (highlighted >= 0) rows[highlighted].dispatchEvent(new MouseEvent('mousedown', {bubbles:true}));
+    else dd.style.display = 'none';
+  } else if (e.key === 'Escape') {
+    dd.style.display = 'none';
+  }
 }
 
 // ── SHARED KEYBOARD-NAVIGABLE DROPDOWN HELPER ────────────────
@@ -643,7 +678,9 @@ function _ddNav(inputId, ddId, getItems, onClose) {
     row.addEventListener('mouseover', () => highlight(i));
   });
   dd.style.display = 'block';
-  highlighted = -1;
+  // Auto-highlight first (and only) item when there's exactly one match
+  if (items.length === 1) { highlighted = 0; highlight(0); }
+  else highlighted = -1;
 }
 
 // ── ITEM AUTOCOMPLETE ─────────────────────────────────────────
