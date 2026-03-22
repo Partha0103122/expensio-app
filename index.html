@@ -130,8 +130,7 @@
   .bar-label{font-size:11px;color:var(--txt2);width:72px;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .bar-track{flex:1;background:var(--bg);border-radius:5px;height:22px;overflow:visible;position:relative}
   .bar-fill{height:100%;border-radius:5px;min-width:4px;transition:width .5s ease;overflow:hidden;position:relative}
-  .bar-outside-label{position:absolute;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:var(--txt);white-space:nowrap;pointer-events:none}
-  .bar-inside-label{position:absolute;right:5px;top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap;pointer-events:none}
+  .bar-fill-lbl{font-size:10px;font-weight:600;color:#fff;white-space:nowrap}
   .bar-val{font-size:11px;color:var(--txt2);font-family:var(--fm);width:58px;text-align:right;flex-shrink:0}
 
   .cat-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
@@ -1003,10 +1002,10 @@ function renderItemHistoryChart(itemName) {
       <div class="bar-label" style="width:80px;font-size:10px">${fmtDate(e.date).replace(' 2025','').replace(' 2026','')}</div>
       <div class="bar-track">
         <div class="bar-fill" style="width:${pct}%;background:var(--accent)">
-          ${pct>32?`<span class="bar-inside-label">${fmtEur(e.amtEur)}</span>`:''}
+          ${pct>30?`<span class="bar-fill-lbl">${fmtEur(e.amtEur)}</span>`:''}
         </div>
-        ${pct<=32?`<span class="bar-outside-label" style="left:calc(${pct}% + 4px)">${fmtEur(e.amtEur)}</span>`:''}
       </div>
+      <div class="bar-val">${fmtEur(e.amtEur)}</div>
     </div>`;
   }).join('');
 
@@ -1338,10 +1337,10 @@ function renderAnalytics() {
       <div class="bar-label" title="${cat.name}">${cat.emoji} ${cat.name.slice(0,8)}</div>
       <div class="bar-track">
         <div class="bar-fill" style="width:${pct}%;background:${cat.color}">
-          ${pct>32?`<span class="bar-inside-label">${fmtEur(amt)}</span>`:''}
+          ${pct>30?`<span class="bar-fill-lbl">${fmtEur(amt)}</span>`:''}
         </div>
-        ${pct<=32?`<span class="bar-outside-label" style="left:calc(${pct}% + 4px)">${fmtEur(amt)}</span>`:''}
       </div>
+      <div class="bar-val">${fmtEur(amt)}</div>
     </div>`;
   }).join('') : '';
 
@@ -1353,10 +1352,10 @@ function renderAnalytics() {
       <div class="bar-label">${d.label}</div>
       <div class="bar-track">
         <div class="bar-fill" style="width:${pct}%;background:var(--accent)">
-          ${pct>32?`<span class="bar-inside-label">${fmtEur(d.val)}</span>`:''}
+          ${pct>30?`<span class="bar-fill-lbl">${fmtEur(d.val)}</span>`:''}
         </div>
-        ${d.val>0&&pct<=32?`<span class="bar-outside-label" style="left:calc(${pct}% + 4px)">${fmtEur(d.val)}</span>`:''}
       </div>
+      <div class="bar-val">${d.val>0?fmtEur(d.val):'-'}</div>
     </div>`;
   }).join('') : '';
 
@@ -1390,9 +1389,8 @@ function renderAnalytics() {
           <div style="flex:${nonLoanPct};background:#2563eb;min-width:${d.total-d.loan>0?3:0}px"></div>
           <div style="flex:${loanPct};background:#0891b2;min-width:${d.loan>0?3:0}px"></div>
         </div>
-        ${d.total>0&&totalPct<=32?`<span class="bar-outside-label" style="left:calc(${totalPct}% + 4px)">${fmtEur(d.total)}</span>`:''}
-        ${d.total>0&&totalPct>32?`<span style="position:absolute;right:calc(${100-totalPct}% + 5px);top:50%;transform:translateY(-50%);font-size:10px;font-weight:600;color:#fff;white-space:nowrap;pointer-events:none">${fmtEur(d.total)}</span>`:''}
       </div>
+      <div class="bar-val">${d.total>0?fmtEur(d.total):'-'}</div>
     </div>`;
   }).join('');
 
@@ -1475,10 +1473,10 @@ function renderAnalyticsBreakdown(filtered) {
       <div class="bar-label" title="${escHtml(displayLabel)}" style="width:90px">${escHtml(displayLabel.slice(0,11))}</div>
       <div class="bar-track">
         <div class="bar-fill" style="width:${pct}%;background:var(--accent)">
-          ${pct>32?`<span class="bar-inside-label">${fmtEur(amt)}</span>`:''}
+          ${pct>30?`<span class="bar-fill-lbl">${fmtEur(amt)}</span>`:''}
         </div>
-        ${pct<=32?`<span class="bar-outside-label" style="left:calc(${pct}% + 4px)">${fmtEur(amt)}</span>`:''}
       </div>
+      <div class="bar-val">${fmtEur(amt)}</div>
     </div>`;
   }).join('');
 
