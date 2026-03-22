@@ -915,6 +915,12 @@ function toggleStoreGroup(safeKey) {
   state._storeExpanded[store] = !state._storeExpanded[store];
   render();
 }
+function toggleCatGroup(safeKey) {
+  const name = decodeURIComponent(safeKey);
+  if (!state._catExpanded) state._catExpanded = {};
+  state._catExpanded[name] = !state._catExpanded[name];
+  render();
+}
 function openBarDetail(title, expIds) {
   const ids = new Set(expIds);
   const exps = state.expenses.filter(e => ids.has(e.id));
@@ -1085,15 +1091,21 @@ function renderGroupedList(q) {
       if (!groups[cat.name]) groups[cat.name] = {cat, items:[]};
       groups[cat.name].items.push(e);
     });
+    if (!state._catExpanded) state._catExpanded = {};
     return Object.entries(groups)
       .sort((a,b) => b[1].items.reduce((s,e)=>s+e.amtEur,0) - a[1].items.reduce((s,e)=>s+e.amtEur,0))
       .map(([name, {cat, items}]) => {
         const total = items.reduce((a,e) => a+e.amtEur, 0);
-        return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center">
+        const isOpen = !!state._catExpanded[name];
+        const safeKey = encodeURIComponent(name);
+        return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" onclick="toggleCatGroup('${safeKey}')">
           <span>${cat.emoji} ${escHtml(name)}</span>
-          <span style="font-family:var(--fm)">${fmtEur(total)}</span>
+          <span style="display:flex;align-items:center;gap:8px;font-family:var(--fm)">
+            <span>${fmtEur(total)}</span>
+            <span style="font-size:11px;opacity:0.5">${isOpen ? '▲' : '▼'}</span>
+          </span>
         </div>
-        <div class="card">${renderExpenseItems(items)}</div>`;
+        ${isOpen ? `<div class="card">${renderExpenseItems(items)}</div>` : ''}`;
       }).join('');
   }
 
