@@ -1325,7 +1325,10 @@ function renderAnalyticsBreakdown(filtered) {
     _groupIds[k].push(e.id);
   });
 
-  const sorted = Object.entries(groups).sort((a,b) => b[1]-a[1]);
+  const sorted = Object.entries(groups).sort((a,b) => {
+    if (mode === 'day' || mode === 'month') return b[0].localeCompare(a[0]); // newest first
+    return b[1]-a[1]; // highest amount first
+  });
   const max = sorted[0]?.[1] || 1;
 
   const bars = sorted.map(([label, amt]) => {
