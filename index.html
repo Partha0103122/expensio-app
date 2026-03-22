@@ -218,7 +218,7 @@
 </div>
 
 <!-- Edit Modal -->
-<div id="edit-modal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center">
+<div id="edit-modal" style="display:none;position:fixed;inset:0;z-index:1002;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center">
   <div style="background:var(--card);border-radius:var(--rad-lg) var(--rad-lg) 0 0;padding:20px 16px 32px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
       <div style="font-size:15px;font-weight:600">Edit Expense</div>
@@ -1157,6 +1157,10 @@ async function deleteExpense(id) {
 let _editingId = null;
 
 function openEditModal(id) {
+  // Close bar detail modal if open (it has higher z-index)
+  const barModal = document.getElementById('bar-detail-modal');
+  if (barModal) barModal.style.display = 'none';
+
   const e = state.expenses.find(ex => ex.id === id);
   if (!e) return;
   _editingId = id;
