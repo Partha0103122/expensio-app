@@ -1178,7 +1178,14 @@ function renderAnalytics() {
   const maxCat = catSorted[0]?.[1] || 1;
 
   let timeSeries = [];
-  if (period === 'week') {
+  if (period === 'day') {
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(now - i*86400000);
+      const ds = d.toISOString().split('T')[0];
+      const _m = filtered.filter(e=>e.date===ds);
+      if (_m.length > 0) timeSeries.push({ label: d.toLocaleDateString('en',{month:'short',day:'numeric'}), fullLabel: d.toLocaleDateString('en',{weekday:'long',month:'short',day:'numeric'}), val: _m.reduce((a,e)=>a+e.amtEur,0), ids: _m.map(e=>e.id) });
+    }
+  } else if (period === 'week') {
     for (let i = 6; i >= 0; i--) {
       const d = new Date(now - i*86400000);
       const ds = d.toISOString().split('T')[0];
