@@ -1150,9 +1150,9 @@ function renderAnalytics() {
   let filtered, periodLabel, days;
 
   if (period === 'day') {
-    const today = now.toISOString().split('T')[0];
-    filtered = state.expenses.filter(e => e.date === today);
-    periodLabel = 'Today'; days = 1;
+    const dAgo = new Date(now - 29*86400000).toISOString().split('T')[0];
+    filtered = state.expenses.filter(e => e.date >= dAgo);
+    periodLabel = 'Last 30 days'; days = 30;
   } else if (period === 'week') {
     const wAgo = new Date(now - 6*86400000).toISOString().split('T')[0];
     filtered = state.expenses.filter(e => e.date >= wAgo);
@@ -1271,7 +1271,7 @@ function renderAnalytics() {
     <div class="bar-chart">${monthlyBars}</div>
   </div>
   <div class="period-tabs">
-    ${['day','week','month','year'].map(p=>`<button class="ptab ${p===period?'active':''}" onclick="state.analyticsPeriod='${p}';render()">${{day:'Day',week:'Week',month:'Month',year:'Year'}[p]}</button>`).join('')}
+    ${['day','week','month','year'].map(p=>`<button class="ptab ${p===period?'active':''}" onclick="state.analyticsPeriod='${p}';render()">${{day:'30 Days',week:'Week',month:'Month',year:'Year'}[p]}</button>`).join('')}
   </div>
   <div class="summary-row">
     <div class="metric">
