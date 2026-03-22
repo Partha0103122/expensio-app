@@ -798,6 +798,12 @@ function renderList() {
 }
 
 function setSearchMode(mode) { state.searchMode = mode; render(); }
+function toggleStoreGroup(safeKey) {
+  const store = decodeURIComponent(safeKey);
+  if (!state._storeExpanded) state._storeExpanded = {};
+  state._storeExpanded[store] = !state._storeExpanded[store];
+  render();
+}
 
 function liveSearch() {
   const q = (document.getElementById('search-input')?.value || '').toLowerCase().trim();
@@ -888,15 +894,21 @@ function renderGroupedList(q) {
       if (!groups[key]) groups[key] = [];
       groups[key].push(e);
     });
+    if (!state._storeExpanded) state._storeExpanded = {};
     return Object.entries(groups)
       .sort((a,b) => b[1][0].date.localeCompare(a[1][0].date))
       .map(([store, items]) => {
         const total = items.reduce((a,e) => a+e.amtEur, 0);
-        return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center">
+        const isOpen = !!state._storeExpanded[store];
+        const safeKey = encodeURIComponent(store);
+        return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" onclick="toggleStoreGroup('${safeKey}')">
           <span>🏪 ${escHtml(store)}</span>
-          <span style="font-family:var(--fm)">${fmtEur(total)} · last ${fmtDate(items[0].date)}</span>
+          <span style="display:flex;align-items:center;gap:8px;font-family:var(--fm)">
+            <span>${fmtEur(total)} · last ${fmtDate(items[0].date)}</span>
+            <span style="font-size:12px;opacity:0.6">${isOpen ? '▲' : '▼'}</span>
+          </span>
         </div>
-        <div class="card">${renderExpenseItems(items)}</div>`;
+        ${isOpen ? `<div class="card">${renderExpenseItems(items)}</div>` : ''}`;
       }).join('');
   }
 
