@@ -412,13 +412,17 @@ async function fetchRate() {
     if(!res.ok) throw new Error();
     const data = await res.json();
     state.eurInr = data.rates.INR;
+    state.eurInrFetchedAt = new Date();
     if(dot) dot.className = 'rate-dot';
-    if(display) display.textContent = `1€=₹${state.eurInr.toFixed(1)}`;
+    const t = state.eurInrFetchedAt;
+    const ts = t.getHours().toString().padStart(2,'0') + ':' + t.getMinutes().toString().padStart(2,'0');
+    if(display) display.textContent = `1€=₹${state.eurInr.toFixed(2)} · ${ts}`;
     render();
   } catch(e) {
-    state.eurInr = 91.5;
+    state.eurInr = 109.0;
+    state.eurInrFetchedAt = null;
     if(dot) dot.className = 'rate-dot stale';
-    if(display) display.textContent = '~₹91.5';
+    if(display) display.textContent = '~₹109 (offline)';
     render();
   }
 }
@@ -1062,21 +1066,23 @@ function renderGroupedList(q) {
   if (state.searchMode === 'store') {
     const groups = {};
     exps.forEach(e => {
-      const key = e.store || 'No store';
+      const key = (e.store || 'No store') + '||' + e.date;
       if (!groups[key]) groups[key] = [];
       groups[key].push(e);
     });
     if (!state._storeExpanded) state._storeExpanded = {};
     return Object.entries(groups)
       .sort((a,b) => b[1][0].date.localeCompare(a[1][0].date))
-      .map(([store, items]) => {
+      .map(([key, items]) => {
+        const store = items[0].store || 'No store';
+        const date = items[0].date;
         const total = items.reduce((a,e) => a+e.amtEur, 0);
-        const isOpen = !!state._storeExpanded[store];
-        const safeKey = encodeURIComponent(store);
+        const isOpen = !!state._storeExpanded[key];
+        const safeKey = encodeURIComponent(key);
         return `<div class="section-divider" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none" onclick="toggleStoreGroup('${safeKey}')">
           <span>🏪 ${escHtml(store)}</span>
           <span style="display:flex;align-items:center;gap:8px;font-family:var(--fm)">
-            <span>${fmtEur(total)} · last ${fmtDate(items[0].date)}</span>
+            <span>${fmtEur(total)} · ${fmtDate(date)}</span>
             <span style="font-size:11px;opacity:0.5">${isOpen ? '▲' : '▼'}</span>
           </span>
         </div>
