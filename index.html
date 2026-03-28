@@ -404,8 +404,15 @@ async function loadFromSheets() {
       }
     });
     save();
+    const existingById = {};
+    state.expenses.forEach(e => { existingById[String(e.id)] = e; });
     const sheetExpenses = rows.map(r => {
       const cat = state.categories.find(c => c.name === (r[4]||'Other')) || state.categories.find(c => c.id === 'other');
+      const existing = existingById[String(parseInt(r[0]))];
+      // Preserve local avoidable if sheet column is absent (old rows without col 14)
+      const avoidable = r[13] !== undefined && r[13] !== ''
+        ? r[13] === 'Yes'
+        : (existing ? existing.avoidable : false);
       return {
         id: parseInt(r[0]) || Date.now() + Math.random(),
         date: r[1]||'', name: r[2]||'', store: r[3]||'',
@@ -417,7 +424,7 @@ async function loadFromSheets() {
         unitPrice: parseFloat(r[10])||0,
         isLoanEMI: r[11]==='Yes',
         notes: r[12]||'',
-        avoidable: r[13]==='Yes',
+        avoidable,
       };
     }).filter(e => e.name && e.amtEur);
     const pendingExps = state.expenses.filter(e => state.pendingSync.includes(e.id));
@@ -649,6 +656,10 @@ function renderAdd() {
       </div>
     </div>
     <hr class="divider" style="margin:12px 0 10px">
+    <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;font-size:12px;color:var(--txt2)">
+      <input type="checkbox" id="f-avoidable" style="accent-color:#dc2626;width:13px;height:13px;cursor:pointer">
+      <span>Mark as <strong style="color:#dc2626">avoidable</strong> spending</span>
+    </label>
     <div class="repeat-toggle-row" onclick="toggleRepeat()">
       <label class="toggle-switch"><input type="checkbox" id="f-repeat-chk" onclick="event.stopPropagation();toggleRepeat()"><span class="toggle-slider"></span></label>
       <label>Repeat this expense</label>
@@ -1067,6 +1078,7 @@ async function addExpense() {
   }
 
   const baseId = Date.now();
+  const avoidable = document.getElementById('f-avoidable')?.checked === true;
   const newExps = allDates.map((d, i) => ({
     id: baseId + i,
     name, store: store || '',
@@ -1077,7 +1089,7 @@ async function addExpense() {
     qty: qty > 0 ? qty : (unitPrice > 0 ? 1 : 0),
     unitPrice: unitPrice || 0,
     isLoanEMI: catId === 'loans',
-    avoidable: false,
+    avoidable,
   }));
 
   newExps.forEach(exp => {
@@ -1100,6 +1112,8 @@ function clearForm() {
   ['f-name','f-amount','f-notes','f-unit-price','f-qty'].forEach(id => {
     const el = document.getElementById(id); if(el) el.value = '';
   });
+  const av = document.getElementById('f-avoidable');
+  if (av) av.checked = false;
   const dt = document.getElementById('f-date');
   if(dt) dt.value = new Date().toISOString().split('T')[0];
   ['amt-preview','qty-total'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=''; });
@@ -1354,8 +1368,8 @@ function renderExpenseItems(exps) {
         <div class="expense-name">${escHtml(e.name)}${e.isLoanEMI?'<span class="emi-tag">EMI</span>':''}${pending?'<span class="emi-tag" style="background:#fef3c7;color:#92400e">⏳</span>':''}</div>
         <div class="expense-meta">${fmtDate(e.date)}${e.store?' · '+escHtml(e.store):''}${e.qty>1?' · '+e.qty+' units':''}</div>
         ${e.notes?`<div class="expense-meta" style="font-style:italic">${escHtml(e.notes)}</div>`:''}
-        <label style="display:inline-flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;user-select:none;font-size:11px;color:${e.avoidable?'#dc2626':'var(--txt3)'}">
-          <input type="checkbox" ${e.avoidable?'checked':''} onchange="toggleAvoidable(${e.id},this.checked)" style="accent-color:#dc2626;width:13px;height:13px;cursor:pointer">
+        <label style="display:inline-flex;align-items:center;gap:4px;margin-top:3px;cursor:pointer;user-select:none;font-size:10px;color:${e.avoidable?'#dc2626':'var(--txt3)'}">
+          <input type="checkbox" ${e.avoidable?'checked':''} onchange="toggleAvoidable(${e.id},this.checked)" style="accent-color:#dc2626;width:11px;height:11px;cursor:pointer;margin:0">
           avoidable
         </label>
       </div>
