@@ -230,6 +230,38 @@
 </div>
 
 <!-- Edit Modal -->
+<div id="copy-modal" style="display:none;position:fixed;inset:0;z-index:1003;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center" onclick="if(event.target===this)closeCopyModal()">
+  <div style="background:var(--card);border-radius:var(--rad-lg) var(--rad-lg) 0 0;padding:20px 16px 32px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <div style="font-size:15px;font-weight:600">↩ Copy Expense</div>
+      <span onclick="closeCopyModal()" style="font-size:20px;cursor:pointer;color:var(--txt3);padding:2px 6px">✕</span>
+    </div>
+    <div id="copy-modal-subtitle" style="font-size:12px;color:var(--txt3);margin-bottom:16px"></div>
+    <div class="repeat-type-row" style="margin-bottom:14px">
+      <button class="rtype-btn active" id="c-rtype-thismonth" onclick="setCopyType('thismonth')">This month</button>
+      <button class="rtype-btn" id="c-rtype-months" onclick="setCopyType('months')">Next X months</button>
+      <button class="rtype-btn" id="c-rtype-until" onclick="setCopyType('until')">Until date</button>
+    </div>
+    <div id="copy-thismonth-row" style="font-size:13px;color:var(--txt2);padding:4px 0 8px">
+      Copies the expense to the same day in the current month.
+    </div>
+    <div id="copy-months-row" class="form-group" style="display:none;margin:0 0 8px">
+      <label>Number of months to copy forward</label>
+      <input id="c-repeat-months" type="number" min="1" max="60" placeholder="e.g. 3" style="max-width:120px" oninput="updateCopyPreview()">
+      <div class="preview-text" id="c-preview-months"></div>
+    </div>
+    <div id="copy-until-row" class="form-group" style="display:none;margin:0 0 8px">
+      <label>Copy until</label>
+      <input id="c-repeat-until" type="date" style="max-width:180px" oninput="updateCopyPreview()">
+      <div class="preview-text" id="c-preview-until"></div>
+    </div>
+    <div class="btn-row" style="margin-top:6px">
+      <button class="btn btn-primary" onclick="confirmCopy()">Copy</button>
+      <button class="btn btn-ghost" onclick="closeCopyModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="edit-modal" style="display:none;position:fixed;inset:0;z-index:1002;background:rgba(0,0,0,0.45);align-items:flex-end;justify-content:center">
   <div style="background:var(--card);border-radius:var(--rad-lg) var(--rad-lg) 0 0;padding:20px 16px 32px;width:100%;max-width:680px;max-height:90vh;overflow-y:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
@@ -1290,47 +1322,121 @@ function renderExpenseItems(exps) {
         <div class="expense-eur">${fmtEur(e.amtEur)}</div>
         ${inrStr?`<div class="expense-inr">${inrStr}</div>`:''}
         <span class="del-btn" style="margin-right:4px" onclick="openEditModal(${e.id})">✏️ edit</span>
-        <span class="del-btn" style="margin-right:4px" onclick="copyToThisMonth(${e.id})">↩ copy</span>
+        <span class="del-btn" style="margin-right:4px" onclick="openCopyModal(${e.id})">↩ copy</span>
         <span class="del-btn" onclick="deleteExpense(${e.id})">x remove</span>
       </div>
     </div>`;
   }).join('');
 }
 
-function copyToThisMonth(id) {
+let _copyingId = null;
+
+function openCopyModal(id) {
   const src = state.expenses.find(e => e.id === id);
   if (!src) return;
+  _copyingId = id;
+  const sub = document.getElementById('copy-modal-subtitle');
+  if (sub) sub.textContent = `"${src.name}" · ${fmtDate(src.date)} · ${fmtEur(src.amtEur)}`;
+  // Reset to default state
+  setCopyType('thismonth');
+  const rm = document.getElementById('c-repeat-months'); if (rm) rm.value = '';
+  const ru = document.getElementById('c-repeat-until'); if (ru) ru.value = '';
+  ['c-preview-months','c-preview-until'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=''; });
+  document.getElementById('copy-modal').style.display = 'flex';
+}
 
-  // Build new date: same day-of-month, current year+month
-  const now = new Date();
-  const srcDay = src.date.slice(8, 10); // DD from YYYY-MM-DD
-  const newMonth = String(now.getMonth() + 1).padStart(2, '0');
-  const newYear = now.getFullYear();
-  // Clamp day to last day of current month
-  const maxDay = new Date(newYear, now.getMonth() + 1, 0).getDate();
-  const day = String(Math.min(parseInt(srcDay), maxDay)).padStart(2, '0');
-  const newDate = `${newYear}-${newMonth}-${day}`;
+function closeCopyModal() {
+  document.getElementById('copy-modal').style.display = 'none';
+  _copyingId = null;
+}
 
-  // Check if an identical entry already exists this month
-  const already = state.expenses.find(e =>
-    e.name === src.name &&
-    e.store === src.store &&
-    e.catId === src.catId &&
-    e.date.slice(0, 7) === `${newYear}-${newMonth}`
-  );
-  if (already) {
-    if (!confirm(`"${src.name}" already exists in ${new Date(newDate+'T00:00:00').toLocaleDateString('en',{month:'long'})}. Copy anyway?`)) return;
+function setCopyType(type) {
+  document.getElementById('copy-thismonth-row').style.display = type === 'thismonth' ? '' : 'none';
+  document.getElementById('copy-months-row').style.display = type === 'months' ? '' : 'none';
+  document.getElementById('copy-until-row').style.display = type === 'until' ? '' : 'none';
+  document.getElementById('c-rtype-thismonth').className = 'rtype-btn' + (type === 'thismonth' ? ' active' : '');
+  document.getElementById('c-rtype-months').className = 'rtype-btn' + (type === 'months' ? ' active' : '');
+  document.getElementById('c-rtype-until').className = 'rtype-btn' + (type === 'until' ? ' active' : '');
+  updateCopyPreview();
+}
+
+function updateCopyPreview() {
+  const src = state.expenses.find(e => e.id === _copyingId);
+  if (!src) return;
+  const isMonths = document.getElementById('c-rtype-months')?.classList.contains('active');
+  const isUntil = document.getElementById('c-rtype-until')?.classList.contains('active');
+  if (isMonths) {
+    const n = parseInt(document.getElementById('c-repeat-months')?.value || 0);
+    const prev = document.getElementById('c-preview-months');
+    if (!n || n < 1) { if (prev) prev.textContent = ''; return; }
+    const dates = getCopyDates(src.date, 'months', n, null);
+    if (prev) prev.textContent = `Will create ${dates.length} entr${dates.length===1?'y':'ies'}: ${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}`;
+  } else if (isUntil) {
+    const until = document.getElementById('c-repeat-until')?.value;
+    const prev = document.getElementById('c-preview-until');
+    if (!until) { if (prev) prev.textContent = ''; return; }
+    const dates = getCopyDates(src.date, 'until', null, until);
+    if (!dates.length) { if (prev) prev.textContent = 'Until date must be after the expense date'; return; }
+    if (prev) prev.textContent = `Will create ${dates.length} entr${dates.length===1?'y':'ies'}: ${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}`;
+  }
+}
+
+function getCopyDates(srcDate, mode, months, until) {
+  // For "thismonth": returns [thisMonthDate]
+  // For "months": returns next N months from srcDate
+  // For "until": returns monthly from srcDate+1month up to until
+  const [y, m, d] = srcDate.split('-').map(Number);
+  if (mode === 'thismonth') {
+    const now = new Date();
+    const ny = now.getFullYear(), nm = now.getMonth() + 1;
+    const maxDay = new Date(ny, nm, 0).getDate();
+    const nd = Math.min(d, maxDay);
+    return [`${ny}-${String(nm).padStart(2,'0')}-${String(nd).padStart(2,'0')}`];
+  }
+  return getRepeatDates(srcDate, mode, months, until);
+}
+
+async function confirmCopy() {
+  const src = state.expenses.find(e => e.id === _copyingId);
+  if (!src) return;
+
+  const isThisMonth = document.getElementById('c-rtype-thismonth')?.classList.contains('active');
+  const isMonths = document.getElementById('c-rtype-months')?.classList.contains('active');
+  const isUntil = document.getElementById('c-rtype-until')?.classList.contains('active');
+
+  let dates = [];
+  if (isThisMonth) {
+    dates = getCopyDates(src.date, 'thismonth', null, null);
+  } else if (isMonths) {
+    const n = parseInt(document.getElementById('c-repeat-months')?.value || 0);
+    if (!n || n < 1) { toast('Enter number of months'); return; }
+    dates = getCopyDates(src.date, 'months', n, null);
+  } else if (isUntil) {
+    const until = document.getElementById('c-repeat-until')?.value;
+    if (!until) { toast('Select an until date'); return; }
+    if (until <= src.date) { toast('Until date must be after the expense date'); return; }
+    dates = getCopyDates(src.date, 'until', null, until);
   }
 
-  const exp = {
-    ...src,
-    id: Date.now(),
-    date: newDate,
-  };
-  state.expenses.push(exp);
-  state.pendingSync.push(exp.id);
+  if (!dates.length) { toast('No dates to copy to'); return; }
+
+  // Duplicate check for this-month
+  if (isThisMonth) {
+    const newDate = dates[0];
+    const [ny, nm] = newDate.split('-');
+    const already = state.expenses.find(e =>
+      e.name === src.name && e.store === src.store && e.catId === src.catId &&
+      e.date.slice(0,7) === `${ny}-${nm}`
+    );
+    if (already && !confirm(`"${src.name}" already exists in that month. Copy anyway?`)) return;
+  }
+
+  closeCopyModal();
+  const baseId = Date.now();
+  const newExps = dates.map((d, i) => ({ ...src, id: baseId + i, date: d }));
+  newExps.forEach(exp => { state.expenses.push(exp); state.pendingSync.push(exp.id); });
   save(); render();
-  toast(`↩ Copied to ${fmtDate(newDate)}`);
+  toast(dates.length === 1 ? `↩ Copied to ${fmtDate(dates[0])}` : `↩ Copied to ${dates.length} months!`);
   if (navigator.onLine) setTimeout(() => syncToSheets(), 800);
 }
 
