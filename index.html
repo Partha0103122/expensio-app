@@ -152,6 +152,19 @@
   .note-box{background:#fffbeb;border:0.5px solid #fbbf24;border-radius:var(--rad);padding:10px 14px;font-size:13px;color:#92400e;display:flex;align-items:flex-start;gap:8px;margin-top:10px;line-height:1.5}
   .note-icon{font-size:16px;flex-shrink:0;margin-top:1px}
 
+  .repeat-toggle-row{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;margin-top:2px}
+  .repeat-toggle-row label{font-size:13px;color:var(--txt2);cursor:pointer}
+  .toggle-switch{position:relative;width:36px;height:20px;flex-shrink:0}
+  .toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+  .toggle-slider{position:absolute;inset:0;background:var(--border2);border-radius:20px;transition:.2s}
+  .toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+  .toggle-switch input:checked + .toggle-slider{background:var(--accent)}
+  .toggle-switch input:checked + .toggle-slider:before{transform:translateX(16px)}
+  .repeat-panel{background:var(--bg);border:0.5px solid var(--border2);border-radius:var(--rad);padding:12px;margin-top:8px;display:flex;flex-direction:column;gap:10px}
+  .repeat-type-row{display:flex;gap:0;border:0.5px solid var(--border2);border-radius:var(--rad);overflow:hidden;width:fit-content}
+  .rtype-btn{padding:7px 16px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--txt2);font-family:var(--ff);transition:all .15s}
+  .rtype-btn.active{background:var(--accent);color:#fff}
+
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#1a1a18;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:500;opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);z-index:9999;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 
@@ -235,6 +248,30 @@
       <div class="form-group"><label>Notes</label><input id="e-notes" placeholder="Optional..."></div>
       <div class="form-group"><label>Qty</label><input id="e-qty" type="number" min="0" placeholder="0"></div>
       <div class="form-group"><label>Unit Price</label><input id="e-unit-price" type="number" step="0.01" min="0" placeholder="0.00"></div>
+    </div>
+    <hr class="divider" style="margin:14px 0 10px">
+    <div class="repeat-toggle-row" onclick="toggleEditRepeat()">
+      <label class="toggle-switch"><input type="checkbox" id="e-repeat-chk" onclick="event.stopPropagation();toggleEditRepeat()"><span class="toggle-slider"></span></label>
+      <label>Also repeat for future months</label>
+    </div>
+    <div id="edit-repeat-panel" class="repeat-panel" style="display:none">
+      <div>
+        <div style="font-size:11px;color:var(--txt3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Repeat mode</div>
+        <div class="repeat-type-row">
+          <button class="rtype-btn active" id="e-rtype-months" onclick="setEditRepeatType('months')">Next X months</button>
+          <button class="rtype-btn" id="e-rtype-until" onclick="setEditRepeatType('until')">Until date</button>
+        </div>
+      </div>
+      <div id="edit-repeat-months-row" class="form-group" style="margin:0">
+        <label>Number of additional months</label>
+        <input id="e-repeat-months" type="number" min="1" max="60" placeholder="e.g. 3" style="max-width:120px" oninput="updateEditRepeatPreview()">
+        <div class="preview-text" id="e-repeat-preview"></div>
+      </div>
+      <div id="edit-repeat-until-row" class="form-group" style="display:none;margin:0">
+        <label>Repeat until</label>
+        <input id="e-repeat-until" type="date" style="max-width:180px" oninput="updateEditRepeatPreview()">
+        <div class="preview-text" id="e-repeat-preview-until"></div>
+      </div>
     </div>
     <div class="btn-row" style="margin-top:18px">
       <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
@@ -565,6 +602,30 @@ function renderAdd() {
         <input id="f-notes" placeholder="Optional details..." value="${escHtml(draft.notes||'')}">
       </div>
     </div>
+    <hr class="divider" style="margin:12px 0 10px">
+    <div class="repeat-toggle-row" onclick="toggleRepeat()">
+      <label class="toggle-switch"><input type="checkbox" id="f-repeat-chk" onclick="event.stopPropagation();toggleRepeat()"><span class="toggle-slider"></span></label>
+      <label>Repeat this expense</label>
+    </div>
+    <div id="repeat-panel" class="repeat-panel" style="display:none">
+      <div>
+        <div style="font-size:11px;color:var(--txt3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">Repeat mode</div>
+        <div class="repeat-type-row">
+          <button class="rtype-btn active" id="rtype-months" onclick="setRepeatType('months')">Next X months</button>
+          <button class="rtype-btn" id="rtype-until" onclick="setRepeatType('until')">Until date</button>
+        </div>
+      </div>
+      <div id="repeat-months-row" class="form-group" style="margin:0">
+        <label>Number of additional months</label>
+        <input id="f-repeat-months" type="number" min="1" max="60" placeholder="e.g. 3" style="max-width:120px" oninput="updateRepeatPreview()">
+        <div class="preview-text" id="repeat-preview"></div>
+      </div>
+      <div id="repeat-until-row" class="form-group" style="display:none;margin:0">
+        <label>Repeat until</label>
+        <input id="f-repeat-until" type="date" style="max-width:180px" oninput="updateRepeatPreview()">
+        <div class="preview-text" id="repeat-preview-until"></div>
+      </div>
+    </div>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="addExpense()">Save Expense</button>
       <button class="btn btn-ghost" onclick="clearForm()">Clear</button>
@@ -843,6 +904,66 @@ function updateQtyTotal() {
   if (amtEl) { amtEl.value = total.toFixed(2); updateAmtPreview(); }
 }
 
+function toggleRepeat() {
+  const chk = document.getElementById('f-repeat-chk');
+  const panel = document.getElementById('repeat-panel');
+  if (!chk || !panel) return;
+  chk.checked = !chk.checked;
+  panel.style.display = chk.checked ? '' : 'none';
+  if (chk.checked) updateRepeatPreview();
+}
+
+function setRepeatType(type) {
+  document.getElementById('repeat-months-row').style.display = type === 'months' ? '' : 'none';
+  document.getElementById('repeat-until-row').style.display = type === 'until' ? '' : 'none';
+  document.getElementById('rtype-months').className = 'rtype-btn' + (type === 'months' ? ' active' : '');
+  document.getElementById('rtype-until').className = 'rtype-btn' + (type === 'until' ? ' active' : '');
+  updateRepeatPreview();
+}
+
+function updateRepeatPreview() {
+  const date = document.getElementById('f-date')?.value;
+  if (!date) return;
+  const monthsEl = document.getElementById('f-repeat-months');
+  const untilEl = document.getElementById('f-repeat-until');
+  const isMonths = document.getElementById('rtype-months')?.classList.contains('active');
+  if (isMonths) {
+    const n = parseInt(monthsEl?.value || 0);
+    const prev = document.getElementById('repeat-preview');
+    if (!prev) return;
+    if (!n || n < 1) { prev.textContent = ''; return; }
+    const dates = getRepeatDates(date, 'months', n, null);
+    prev.textContent = `Will create ${dates.length} more entr${dates.length===1?'y':'ies'}: ${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}`;
+  } else {
+    const until = untilEl?.value;
+    const prev = document.getElementById('repeat-preview-until');
+    if (!prev) return;
+    if (!until) { prev.textContent = ''; return; }
+    const dates = getRepeatDates(date, 'until', null, until);
+    if (!dates.length) { prev.textContent = 'Until date must be after the expense date'; return; }
+    prev.textContent = `Will create ${dates.length} more entr${dates.length===1?'y':'ies'}: ${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}`;
+  }
+}
+
+function getRepeatDates(startDate, mode, months, until) {
+  // Returns array of future dates (not including startDate itself)
+  const dates = [];
+  const [y, m, d] = startDate.split('-').map(Number);
+  const limit = mode === 'months' ? months : 120; // safety cap at 10 years
+  for (let i = 1; i <= limit; i++) {
+    let nm = m - 1 + i; // 0-indexed month
+    let ny = y + Math.floor(nm / 12);
+    nm = nm % 12;
+    // Clamp day to last day of target month
+    const maxDay = new Date(ny, nm + 1, 0).getDate();
+    const nd = Math.min(d, maxDay);
+    const dateStr = `${ny}-${String(nm+1).padStart(2,'0')}-${String(nd).padStart(2,'0')}`;
+    if (mode === 'until' && dateStr > until) break;
+    dates.push(dateStr);
+  }
+  return dates;
+}
+
 async function addExpense() {
   const name = document.getElementById('f-name')?.value.trim();
   const store = document.getElementById('f-store')?.value.trim();
@@ -860,22 +981,46 @@ async function addExpense() {
   let amtEur = state.currency === 'EUR' ? rawAmt : (state.eurInr ? inrToEur(rawAmt) : null);
   if (!amtEur) { toast('Rate unavailable, try refreshing'); return; }
 
-  const exp = {
-    id: Date.now(),
+  // Build list of dates to save (base date + any repeat dates)
+  const repeatOn = document.getElementById('f-repeat-chk')?.checked;
+  let allDates = [date];
+  if (repeatOn) {
+    const isMonths = document.getElementById('rtype-months')?.classList.contains('active');
+    if (isMonths) {
+      const n = parseInt(document.getElementById('f-repeat-months')?.value || 0);
+      if (!n || n < 1) { toast('Enter number of months to repeat'); return; }
+      allDates = allDates.concat(getRepeatDates(date, 'months', n, null));
+    } else {
+      const until = document.getElementById('f-repeat-until')?.value;
+      if (!until) { toast('Select a repeat-until date'); return; }
+      if (until <= date) { toast('Until date must be after the expense date'); return; }
+      allDates = allDates.concat(getRepeatDates(date, 'until', null, until));
+    }
+  }
+
+  const baseId = Date.now();
+  const newExps = allDates.map((d, i) => ({
+    id: baseId + i,
     name, store: store || '',
     catId: catId || 'other',
     amtEur: parseFloat(amtEur.toFixed(4)),
     originalAmt: rawAmt, originalCur: state.currency,
-    date, notes: notes || '',
+    date: d, notes: notes || '',
     qty: qty > 0 ? qty : (unitPrice > 0 ? 1 : 0),
     unitPrice: unitPrice || 0,
     isLoanEMI: catId === 'loans',
-  };
+  }));
 
-  state.expenses.push(exp);
-  state.pendingSync.push(exp.id);
+  newExps.forEach(exp => {
+    state.expenses.push(exp);
+    state.pendingSync.push(exp.id);
+  });
   save();
-  toast('Saved!');
+  if (allDates.length === 1) {
+    toast('Saved!');
+  } else {
+    toast(`Saved ${allDates.length} entries!`);
+  }
   clearForm();
   render();
   if (navigator.onLine) setTimeout(() => syncToSheets(), 800);
@@ -889,6 +1034,16 @@ function clearForm() {
   const dt = document.getElementById('f-date');
   if(dt) dt.value = new Date().toISOString().split('T')[0];
   ['amt-preview','qty-total'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=''; });
+  // Reset repeat
+  const chk = document.getElementById('f-repeat-chk');
+  if (chk) chk.checked = false;
+  const panel = document.getElementById('repeat-panel');
+  if (panel) panel.style.display = 'none';
+  const rm = document.getElementById('f-repeat-months');
+  if (rm) rm.value = '';
+  const ru = document.getElementById('f-repeat-until');
+  if (ru) ru.value = '';
+  ['repeat-preview','repeat-preview-until'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=''; });
   // Preserve store & category in draft
   const store = document.getElementById('f-store')?.value || '';
   const catId = document.getElementById('f-cat')?.value || '';
@@ -1232,9 +1387,60 @@ function openEditModal(id) {
   document.getElementById('e-qty').value = e.qty || '';
   document.getElementById('e-unit-price').value = e.unitPrice || '';
 
+  // Reset repeat panel
+  const chk = document.getElementById('e-repeat-chk');
+  if (chk) chk.checked = false;
+  const panel = document.getElementById('edit-repeat-panel');
+  if (panel) panel.style.display = 'none';
+  const rm = document.getElementById('e-repeat-months');
+  if (rm) rm.value = '';
+  const ru = document.getElementById('e-repeat-until');
+  if (ru) ru.value = '';
+  ['e-repeat-preview','e-repeat-preview-until'].forEach(id => { const el=document.getElementById(id); if(el) el.textContent=''; });
+  setEditRepeatType('months');
+
   const modal = document.getElementById('edit-modal');
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('e-name').focus(), 100);
+}
+
+function toggleEditRepeat() {
+  const chk = document.getElementById('e-repeat-chk');
+  const panel = document.getElementById('edit-repeat-panel');
+  if (!chk || !panel) return;
+  chk.checked = !chk.checked;
+  panel.style.display = chk.checked ? '' : 'none';
+  if (chk.checked) updateEditRepeatPreview();
+}
+
+function setEditRepeatType(type) {
+  document.getElementById('edit-repeat-months-row').style.display = type === 'months' ? '' : 'none';
+  document.getElementById('edit-repeat-until-row').style.display = type === 'until' ? '' : 'none';
+  document.getElementById('e-rtype-months').className = 'rtype-btn' + (type === 'months' ? ' active' : '');
+  document.getElementById('e-rtype-until').className = 'rtype-btn' + (type === 'until' ? ' active' : '');
+  updateEditRepeatPreview();
+}
+
+function updateEditRepeatPreview() {
+  const date = document.getElementById('e-date')?.value;
+  if (!date) return;
+  const isMonths = document.getElementById('e-rtype-months')?.classList.contains('active');
+  if (isMonths) {
+    const n = parseInt(document.getElementById('e-repeat-months')?.value || 0);
+    const prev = document.getElementById('e-repeat-preview');
+    if (!prev) return;
+    if (!n || n < 1) { prev.textContent = ''; return; }
+    const dates = getRepeatDates(date, 'months', n, null);
+    prev.textContent = `Will create ${dates.length} more entr${dates.length===1?'y':'ies'}: ${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}`;
+  } else {
+    const until = document.getElementById('e-repeat-until')?.value;
+    const prev = document.getElementById('e-repeat-preview-until');
+    if (!prev) return;
+    if (!until) { prev.textContent = ''; return; }
+    const dates = getRepeatDates(date, 'until', null, until);
+    if (!dates.length) { prev.textContent = 'Until date must be after the expense date'; return; }
+    prev.textContent = `Will create ${dates.length} more entr${dates.length===1?'y':'ies'}: ${fmtDate(dates[0])} → ${fmtDate(dates[dates.length-1])}`;
+  }
 }
 
 function closeEditModal() {
@@ -1269,10 +1475,44 @@ async function saveEdit() {
     originalCur: 'EUR',
   };
 
-  closeEditModal();
-  save(); render(); toast('Updated!');
+  // Handle repeat — create new entries for future months
+  const repeatOn = document.getElementById('e-repeat-chk')?.checked;
+  let repeatDates = [];
+  if (repeatOn) {
+    const isMonths = document.getElementById('e-rtype-months')?.classList.contains('active');
+    if (isMonths) {
+      const n = parseInt(document.getElementById('e-repeat-months')?.value || 0);
+      if (!n || n < 1) { toast('Enter number of months to repeat'); return; }
+      repeatDates = getRepeatDates(date, 'months', n, null);
+    } else {
+      const until = document.getElementById('e-repeat-until')?.value;
+      if (!until) { toast('Select a repeat-until date'); return; }
+      if (until <= date) { toast('Until date must be after the expense date'); return; }
+      repeatDates = getRepeatDates(date, 'until', null, until);
+    }
+  }
 
-  // Sync update to Google Sheets
+  const updatedExp = state.expenses[idx];
+  const baseNewId = Date.now();
+  const newExps = repeatDates.map((d, i) => ({
+    ...updatedExp,
+    id: baseNewId + i,
+    date: d,
+  }));
+  newExps.forEach(exp => {
+    state.expenses.push(exp);
+    state.pendingSync.push(exp.id);
+  });
+
+  closeEditModal();
+  save(); render();
+  if (repeatDates.length) {
+    toast(`Updated + ${repeatDates.length} repeat entr${repeatDates.length===1?'y':'ies'} added!`);
+  } else {
+    toast('Updated!');
+  }
+
+  // Sync the edited row to Google Sheets
   if (navigator.onLine) {
     try {
       const e = state.expenses[idx];
@@ -1286,11 +1526,12 @@ async function saveEdit() {
         body: JSON.stringify({ action: 'update', id: e.id, row }),
       });
       const result = await r.json();
-      if (result.status === 'ok') toast('✓ Updated in sheet');
-      else toast('⚠️ Updated locally — sheet sync failed');
+      if (result.status !== 'ok') toast('⚠️ Updated locally — sheet sync failed');
     } catch(err) {
       toast('⚠️ Updated locally — sheet sync failed');
     }
+    // Sync any new repeat entries
+    if (newExps.length > 0) setTimeout(() => syncToSheets(), 800);
   }
 }
 
