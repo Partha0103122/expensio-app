@@ -186,8 +186,19 @@
     .cat-grid{grid-template-columns:1fr 1fr}
     .metric-val{font-size:16px}
   }
+  .avoid-toggle{display:inline-flex;border:0.5px solid var(--border2);border-radius:var(--rad);overflow:hidden}
+  .avoid-btn{padding:7px 14px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;color:var(--txt2);font-family:var(--ff);transition:all .15s;white-space:nowrap}
+  .avoid-btn.active-unavoid{background:#dcfce7;color:#15803d}
+  .avoid-btn.active-avoid{background:#fef2f2;color:#dc2626}
+  .avoid-tag{display:inline-flex;align-items:center;font-size:10px;border-radius:8px;padding:1px 7px;font-weight:500;margin-left:4px}
+  .avoid-tag.avoid{background:#fee2e2;color:#dc2626}
+  .avoid-tag.unavoid{background:#dcfce7;color:#15803d}
+  .habits-hero{border-radius:var(--rad-lg);padding:18px 20px;margin-bottom:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .habits-hero-stat{background:rgba(255,255,255,0.15);border-radius:var(--rad);padding:11px}
+  .habits-hero-label{font-size:11px;opacity:.75;margin-bottom:3px}
+  .habits-hero-val{font-size:18px;font-weight:600;font-family:var(--fm)}
+
 </style>
-</head>
 <body>
 <div class="app" id="app">
   <div class="header">
@@ -211,6 +222,7 @@
     <button class="nav-btn active" onclick="switchTab('add')">➕ Add</button>
     <button class="nav-btn" onclick="switchTab('list')">🧾 Expenses</button>
     <button class="nav-btn" onclick="switchTab('analytics')">📊 Analytics</button>
+    <button class="nav-btn" onclick="switchTab('habits')">💡 Habits</button>
     <button class="nav-btn" onclick="switchTab('loans')">🏦 Loans</button>
     <button class="nav-btn" onclick="switchTab('settings')">🏷 Categories</button>
   </div>
@@ -280,6 +292,13 @@
       <div class="form-group"><label>Notes</label><input id="e-notes" placeholder="Optional..."></div>
       <div class="form-group"><label>Qty</label><input id="e-qty" type="number" min="0" placeholder="0"></div>
       <div class="form-group"><label>Unit Price</label><input id="e-unit-price" type="number" step="0.01" min="0" placeholder="0.00"></div>
+      <div class="form-group full">
+        <label>Spending type</label>
+        <div class="avoid-toggle">
+          <button class="avoid-btn active-unavoid" id="e-unavoid-btn" onclick="setEditAvoidable(false)">✅ Unavoidable</button>
+          <button class="avoid-btn" id="e-avoid-btn" onclick="setEditAvoidable(true)">⚠️ Avoidable</button>
+        </div>
+      </div>
     </div>
     <hr class="divider" style="margin:14px 0 10px">
     <div class="repeat-toggle-row" onclick="toggleEditRepeat()">
@@ -405,6 +424,7 @@ async function loadFromSheets() {
         unitPrice: parseFloat(r[10])||0,
         isLoanEMI: r[11]==='Yes',
         notes: r[12]||'',
+        avoidable: r[13]==='Yes',
       };
     }).filter(e => e.name && e.amtEur);
     const pendingExps = state.expenses.filter(e => state.pendingSync.includes(e.id));
@@ -434,7 +454,7 @@ async function syncToSheets() {
       const inrAmt = state.eurInr ? Math.round(e.amtEur * state.eurInr) : '';
       return [e.id, e.date, e.name, e.store||'', cat?cat.name:'Other',
         e.amtEur.toFixed(2), inrAmt, e.originalAmt, e.originalCur,
-        e.qty||'', e.unitPrice||'', e.isLoanEMI?'Yes':'No', e.notes||''];
+        e.qty||'', e.unitPrice||'', e.isLoanEMI?'Yes':'No', e.notes||'', e.avoidable?'Yes':'No'];
     });
     const r = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
@@ -517,7 +537,7 @@ function toast(msg) {
 function switchTab(tab) {
   state.currentTab = tab;
   document.querySelectorAll('.nav-btn').forEach((b, i) => {
-    b.classList.toggle('active', ['add','list','analytics','loans','settings'][i] === tab);
+    b.classList.toggle('active', ['add','list','analytics','habits','loans','settings'][i] === tab);
   });
   render();
 }
@@ -528,6 +548,7 @@ function render() {
   if (state.currentTab === 'add') c.innerHTML = renderAdd();
   else if (state.currentTab === 'list') c.innerHTML = renderList();
   else if (state.currentTab === 'analytics') c.innerHTML = renderAnalytics();
+  else if (state.currentTab === 'habits') c.innerHTML = renderHabits();
   else if (state.currentTab === 'loans') c.innerHTML = renderLoans();
   else if (state.currentTab === 'settings') c.innerHTML = renderSettings();
 }
@@ -632,6 +653,13 @@ function renderAdd() {
       <div class="form-group">
         <label>Notes</label>
         <input id="f-notes" placeholder="Optional details..." value="${escHtml(draft.notes||'')}">
+      </div>
+      <div class="form-group full">
+        <label>Spending type</label>
+        <div class="avoid-toggle">
+          <button class="avoid-btn ${(draft.avoidable===false||draft.avoidable===undefined)?'active-unavoid':''}" id="f-unavoid-btn" onclick="setAvoidable(false)">✅ Unavoidable</button>
+          <button class="avoid-btn ${draft.avoidable===true?'active-avoid':''}" id="f-avoid-btn" onclick="setAvoidable(true)">⚠️ Avoidable</button>
+        </div>
       </div>
     </div>
     <hr class="divider" style="margin:12px 0 10px">
@@ -936,6 +964,15 @@ function updateQtyTotal() {
   if (amtEl) { amtEl.value = total.toFixed(2); updateAmtPreview(); }
 }
 
+function setAvoidable(val) {
+  if (!state._formDraft) state._formDraft = {};
+  state._formDraft.avoidable = val;
+  const ua = document.getElementById('f-unavoid-btn');
+  const av = document.getElementById('f-avoid-btn');
+  if (ua) ua.className = 'avoid-btn' + (!val ? ' active-unavoid' : '');
+  if (av) av.className = 'avoid-btn' + (val ? ' active-avoid' : '');
+}
+
 function toggleRepeat() {
   const chk = document.getElementById('f-repeat-chk');
   const panel = document.getElementById('repeat-panel');
@@ -1031,6 +1068,7 @@ async function addExpense() {
   }
 
   const baseId = Date.now();
+  const avoidable = state._formDraft?.avoidable === true;
   const newExps = allDates.map((d, i) => ({
     id: baseId + i,
     name, store: store || '',
@@ -1041,6 +1079,7 @@ async function addExpense() {
     qty: qty > 0 ? qty : (unitPrice > 0 ? 1 : 0),
     unitPrice: unitPrice || 0,
     isLoanEMI: catId === 'loans',
+    avoidable,
   }));
 
   newExps.forEach(exp => {
@@ -1314,7 +1353,7 @@ function renderExpenseItems(exps) {
     return `<div class="expense-item">
       <div class="cat-dot" style="background:${cat.color}22">${cat.emoji}</div>
       <div class="expense-main">
-        <div class="expense-name">${escHtml(e.name)}${e.isLoanEMI?'<span class="emi-tag">EMI</span>':''}${pending?'<span class="emi-tag" style="background:#fef3c7;color:#92400e">⏳</span>':''}</div>
+        <div class="expense-name">${escHtml(e.name)}${e.isLoanEMI?'<span class="emi-tag">EMI</span>':''}${e.avoidable===true?'<span class="avoid-tag avoid">⚠️ avoidable</span>':''}${pending?'<span class="emi-tag" style="background:#fef3c7;color:#92400e">⏳</span>':''}</div>
         <div class="expense-meta">${fmtDate(e.date)}${e.store?' · '+escHtml(e.store):''}${e.qty>1?' · '+e.qty+' units':''}</div>
         ${e.notes?`<div class="expense-meta" style="font-style:italic">${escHtml(e.notes)}</div>`:''}
       </div>
@@ -1472,6 +1511,16 @@ async function deleteExpense(id) {
 // ── EDIT MODAL ────────────────────────────────────────────────
 let _editingId = null;
 
+function setEditAvoidable(val) {
+  const ua = document.getElementById('e-unavoid-btn');
+  const av = document.getElementById('e-avoid-btn');
+  if (ua) ua.className = 'avoid-btn' + (!val ? ' active-unavoid' : '');
+  if (av) av.className = 'avoid-btn' + (val ? ' active-avoid' : '');
+  if (ua) ua.dataset.val = val ? '' : '1';
+  // store on button for reading later
+  if (av) av.dataset.active = val ? '1' : '';
+}
+
 function openEditModal(id) {
   // Close bar detail modal if open (it has higher z-index)
   const barModal = document.getElementById('bar-detail-modal');
@@ -1492,6 +1541,7 @@ function openEditModal(id) {
   document.getElementById('e-notes').value = e.notes || '';
   document.getElementById('e-qty').value = e.qty || '';
   document.getElementById('e-unit-price').value = e.unitPrice || '';
+  setEditAvoidable(e.avoidable === true);
 
   // Reset repeat panel
   const chk = document.getElementById('e-repeat-chk');
@@ -1566,6 +1616,7 @@ async function saveEdit() {
   if (!date) { toast('Please select a date'); return; }
 
   const catId = document.getElementById('e-cat').value;
+  const avoidable = document.getElementById('e-avoid-btn')?.dataset.active === '1';
   state.expenses[idx] = {
     ...state.expenses[idx],
     name,
@@ -1579,6 +1630,7 @@ async function saveEdit() {
     isLoanEMI: catId === 'loans',
     originalAmt: parseFloat(amtEur.toFixed(4)),
     originalCur: 'EUR',
+    avoidable,
   };
 
   // Handle repeat — create new entries for future months
@@ -1626,7 +1678,7 @@ async function saveEdit() {
       const inrAmt = state.eurInr ? Math.round(e.amtEur * state.eurInr) : '';
       const row = [e.id, e.date, e.name, e.store||'', cat?cat.name:'Other',
         e.amtEur.toFixed(2), inrAmt, e.originalAmt, e.originalCur,
-        e.qty||'', e.unitPrice||'', e.isLoanEMI?'Yes':'No', e.notes||''];
+        e.qty||'', e.unitPrice||'', e.isLoanEMI?'Yes':'No', e.notes||'', e.avoidable?'Yes':'No'];
       const r = await fetch(APPS_SCRIPT_URL, {
         method: 'POST',
         body: JSON.stringify({ action: 'update', id: e.id, row }),
@@ -1897,6 +1949,128 @@ function renderAnalyticsBreakdown(filtered) {
   return `
   <div class="filter-row" style="margin-top:4px">${modeTabs}</div>
   <div class="card"><div class="bar-chart">${bars}</div></div>`;
+}
+
+// ── HABITS ────────────────────────────────────────────────────
+function renderHabits() {
+  const now = new Date();
+  const nowYM = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+
+  // Build 6-month window ending at latest expense month or current, whichever is later
+  const allMonthsH = [...new Set(state.expenses.map(e => e.date.slice(0,7)))].sort();
+  const latestYMH = allMonthsH.length ? allMonthsH[allMonthsH.length-1] : nowYM;
+  const endYMH = latestYMH > nowYM ? latestYMH : nowYM;
+  const [endYH, endMH] = endYMH.split('-').map(Number);
+
+  const months = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(endYH, endMH - 1 - i, 1);
+    const mStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const mExps = state.expenses.filter(e => e.date.startsWith(mStr));
+    const avoidable = mExps.filter(e => e.avoidable === true);
+    const unavoidable = mExps.filter(e => e.avoidable !== true);
+    const avoidAmt = avoidable.reduce((a,e) => a+e.amtEur, 0);
+    const unavoidAmt = unavoidable.reduce((a,e) => a+e.amtEur, 0);
+    const total = avoidAmt + unavoidAmt;
+    const isFuture = mStr > nowYM;
+    const isCurrent = mStr === nowYM;
+    months.push({ label: d.toLocaleDateString('en',{month:'short'}), fullLabel: d.toLocaleDateString('en',{month:'long',year:'numeric'}), mStr, avoidAmt, unavoidAmt, total, avoidable, unavoidable, isFuture, isCurrent });
+  }
+
+  // Current month summary
+  const cur = months.find(m => m.isCurrent) || months[months.length-1];
+  const curAvoidPct = cur.total > 0 ? Math.round((cur.avoidAmt/cur.total)*100) : 0;
+
+  // Untagged count
+  const untaggedCount = state.expenses.filter(e => e.avoidable === undefined || e.avoidable === null).length;
+
+  // Stacked bar chart
+  const maxH = Math.max(...months.map(m => m.total), 1);
+  const bars = months.map(m => {
+    const unavoidPct = (m.unavoidAmt/maxH)*100;
+    const avoidPct = (m.avoidAmt/maxH)*100;
+    const totalPct = unavoidPct + avoidPct;
+    const isFutureStyle = m.isFuture ? ';opacity:0.6' : '';
+    const labelStyle = m.isCurrent ? 'color:var(--accent);font-weight:600' : m.isFuture ? 'color:var(--txt3);font-style:italic' : '';
+    return `<div class="bar-row">
+      <div class="bar-label" style="${labelStyle}">${m.label}${m.isCurrent?' ◂':''}</div>
+      <div class="bar-track" style="${m.total>0?'background:rgba(0,0,0,0.06)':''}">
+        <div style="display:flex;height:100%;border-radius:5px;overflow:hidden;width:${totalPct}%${isFutureStyle}">
+          <div style="flex:${unavoidPct};background:#2563eb;min-width:${m.unavoidAmt>0?3:0}px"></div>
+          <div style="flex:${avoidPct};background:#ef4444;min-width:${m.avoidAmt>0?3:0}px"></div>
+        </div>
+      </div>
+      <div class="bar-val" style="font-size:10px;width:70px">
+        ${m.total>0 ? `<span style="color:#ef4444">${Math.round((m.avoidAmt/m.total)*100)}%</span> avd` : '-'}
+      </div>
+    </div>`;
+  }).join('');
+
+  // Avoidable breakdown for current month — top items
+  const avoidItems = {};
+  cur.avoidable.forEach(e => { avoidItems[e.name] = (avoidItems[e.name]||0) + e.amtEur; });
+  const topAvoid = Object.entries(avoidItems).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const avoidMax = topAvoid.length ? topAvoid[0][1] : 1;
+  const avoidBars = topAvoid.map(([name, amt]) => {
+    const pct = (amt/avoidMax)*100;
+    return `<div class="bar-row">
+      <div class="bar-label">${escHtml(name)}</div>
+      <div class="bar-track" style="background:rgba(0,0,0,0.06)">
+        <div class="bar-fill" style="width:${pct}%;background:#ef4444">${pct>30?`<span class="bar-fill-lbl">${fmtEur(amt)}</span>`:''}</div>
+      </div>
+      <div class="bar-val">${fmtEur(amt)}</div>
+    </div>`;
+  }).join('');
+
+  // Unavoidable breakdown for current month
+  const unavoidItems = {};
+  cur.unavoidable.forEach(e => { unavoidItems[e.name] = (unavoidItems[e.name]||0) + e.amtEur; });
+  const topUnavoid = Object.entries(unavoidItems).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const unavoidMax = topUnavoid.length ? topUnavoid[0][1] : 1;
+  const unavoidBars = topUnavoid.map(([name, amt]) => {
+    const pct = (amt/unavoidMax)*100;
+    return `<div class="bar-row">
+      <div class="bar-label">${escHtml(name)}</div>
+      <div class="bar-track" style="background:rgba(0,0,0,0.06)">
+        <div class="bar-fill" style="width:${pct}%;background:#2563eb">${pct>30?`<span class="bar-fill-lbl">${fmtEur(amt)}</span>`:''}</div>
+      </div>
+      <div class="bar-val">${fmtEur(amt)}</div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div style="background:${curAvoidPct>40?'#7f1d1d':curAvoidPct>20?'#78350f':'#14532d'};border-radius:var(--rad-lg);padding:18px 20px;margin-bottom:12px;color:#fff">
+    <div style="font-size:12px;font-weight:500;opacity:.75;margin-bottom:6px">This month · ${cur.fullLabel}</div>
+    <div style="font-size:32px;font-weight:700;font-family:var(--fm);letter-spacing:-1px;margin-bottom:2px">${curAvoidPct}% avoidable</div>
+    <div style="font-size:13px;opacity:.7">${fmtEur(cur.avoidAmt)} avoidable · ${fmtEur(cur.unavoidAmt)} unavoidable</div>
+    <div class="habits-hero" style="margin-top:14px;margin-bottom:0">
+      <div class="habits-hero-stat">
+        <div class="habits-hero-label">Avoidable total</div>
+        <div class="habits-hero-val">${fmtEur(cur.avoidAmt)}</div>
+      </div>
+      <div class="habits-hero-stat">
+        <div class="habits-hero-label">Avoidable items</div>
+        <div class="habits-hero-val">${cur.avoidable.length}</div>
+      </div>
+    </div>
+  </div>
+  ${untaggedCount > 0 ? `<div class="note-box"><span class="note-icon">💡</span><span><strong>${untaggedCount} expense${untaggedCount>1?'s are':' is'} untagged</strong> — open them and set Unavoidable or Avoidable to improve accuracy.</span></div>` : ''}
+  <div class="card" style="margin-top:12px">
+    <div class="card-title">6-month overview</div>
+    <div style="display:flex;gap:16px;margin-bottom:10px;font-size:11px;color:var(--txt2)">
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#2563eb;display:inline-block"></span>Unavoidable</span>
+      <span style="display:flex;align-items:center;gap:4px"><span style="width:10px;height:10px;border-radius:2px;background:#ef4444;display:inline-block"></span>Avoidable</span>
+    </div>
+    <div class="bar-chart">${bars}</div>
+  </div>
+  ${topAvoid.length ? `<div class="card" style="margin-top:12px">
+    <div class="card-title">⚠️ Top avoidable · ${cur.label}</div>
+    <div class="bar-chart">${avoidBars}</div>
+  </div>` : ''}
+  ${topUnavoid.length ? `<div class="card" style="margin-top:12px">
+    <div class="card-title">✅ Top unavoidable · ${cur.label}</div>
+    <div class="bar-chart">${unavoidBars}</div>
+  </div>` : ''}`;
 }
 
 // ── LOANS ─────────────────────────────────────────────────────
