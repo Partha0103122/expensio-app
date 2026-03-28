@@ -292,13 +292,6 @@
       <div class="form-group"><label>Notes</label><input id="e-notes" placeholder="Optional..."></div>
       <div class="form-group"><label>Qty</label><input id="e-qty" type="number" min="0" placeholder="0"></div>
       <div class="form-group"><label>Unit Price</label><input id="e-unit-price" type="number" step="0.01" min="0" placeholder="0.00"></div>
-      <div class="form-group full">
-        <label>Spending type</label>
-        <div class="avoid-toggle">
-          <button class="avoid-btn active-unavoid" id="e-unavoid-btn" onclick="setEditAvoidable(false)">✅ Unavoidable</button>
-          <button class="avoid-btn" id="e-avoid-btn" onclick="setEditAvoidable(true)">⚠️ Avoidable</button>
-        </div>
-      </div>
     </div>
     <hr class="divider" style="margin:14px 0 10px">
     <div class="repeat-toggle-row" onclick="toggleEditRepeat()">
@@ -654,13 +647,6 @@ function renderAdd() {
         <label>Notes</label>
         <input id="f-notes" placeholder="Optional details..." value="${escHtml(draft.notes||'')}">
       </div>
-      <div class="form-group full">
-        <label>Spending type</label>
-        <div class="avoid-toggle">
-          <button class="avoid-btn ${(draft.avoidable===false||draft.avoidable===undefined)?'active-unavoid':''}" id="f-unavoid-btn" onclick="setAvoidable(false)">✅ Unavoidable</button>
-          <button class="avoid-btn ${draft.avoidable===true?'active-avoid':''}" id="f-avoid-btn" onclick="setAvoidable(true)">⚠️ Avoidable</button>
-        </div>
-      </div>
     </div>
     <hr class="divider" style="margin:12px 0 10px">
     <div class="repeat-toggle-row" onclick="toggleRepeat()">
@@ -964,13 +950,26 @@ function updateQtyTotal() {
   if (amtEl) { amtEl.value = total.toFixed(2); updateAmtPreview(); }
 }
 
-function setAvoidable(val) {
-  if (!state._formDraft) state._formDraft = {};
-  state._formDraft.avoidable = val;
-  const ua = document.getElementById('f-unavoid-btn');
-  const av = document.getElementById('f-avoid-btn');
-  if (ua) ua.className = 'avoid-btn' + (!val ? ' active-unavoid' : '');
-  if (av) av.className = 'avoid-btn' + (val ? ' active-avoid' : '');
+function toggleAvoidable(id, val) {
+  const exp = state.expenses.find(e => e.id === id);
+  if (!exp) return;
+  exp.avoidable = val;
+  // Update label colour inline without full re-render
+  const cb = document.querySelector(`input[onchange="toggleAvoidable(${id},this.checked)"]`);
+  if (cb) {
+    const lbl = cb.closest('label');
+    if (lbl) lbl.style.color = val ? '#dc2626' : 'var(--txt3)';
+  }
+  save();
+  if (navigator.onLine) {
+    // Patch just this row in sheets
+    const cat = state.categories.find(c => c.id === exp.catId);
+    const inrAmt = state.eurInr ? Math.round(exp.amtEur * state.eurInr) : '';
+    const row = [exp.id, exp.date, exp.name, exp.store||'', cat?cat.name:'Other',
+      exp.amtEur.toFixed(2), inrAmt, exp.originalAmt, exp.originalCur,
+      exp.qty||'', exp.unitPrice||'', exp.isLoanEMI?'Yes':'No', exp.notes||'', exp.avoidable?'Yes':'No'];
+    fetch(APPS_SCRIPT_URL, { method:'POST', body: JSON.stringify({ action:'update', id: exp.id, row }) });
+  }
 }
 
 function toggleRepeat() {
@@ -1068,7 +1067,6 @@ async function addExpense() {
   }
 
   const baseId = Date.now();
-  const avoidable = state._formDraft?.avoidable === true;
   const newExps = allDates.map((d, i) => ({
     id: baseId + i,
     name, store: store || '',
@@ -1079,7 +1077,7 @@ async function addExpense() {
     qty: qty > 0 ? qty : (unitPrice > 0 ? 1 : 0),
     unitPrice: unitPrice || 0,
     isLoanEMI: catId === 'loans',
-    avoidable,
+    avoidable: false,
   }));
 
   newExps.forEach(exp => {
@@ -1353,9 +1351,13 @@ function renderExpenseItems(exps) {
     return `<div class="expense-item">
       <div class="cat-dot" style="background:${cat.color}22">${cat.emoji}</div>
       <div class="expense-main">
-        <div class="expense-name">${escHtml(e.name)}${e.isLoanEMI?'<span class="emi-tag">EMI</span>':''}${e.avoidable===true?'<span class="avoid-tag avoid">⚠️ avoidable</span>':''}${pending?'<span class="emi-tag" style="background:#fef3c7;color:#92400e">⏳</span>':''}</div>
+        <div class="expense-name">${escHtml(e.name)}${e.isLoanEMI?'<span class="emi-tag">EMI</span>':''}${pending?'<span class="emi-tag" style="background:#fef3c7;color:#92400e">⏳</span>':''}</div>
         <div class="expense-meta">${fmtDate(e.date)}${e.store?' · '+escHtml(e.store):''}${e.qty>1?' · '+e.qty+' units':''}</div>
         ${e.notes?`<div class="expense-meta" style="font-style:italic">${escHtml(e.notes)}</div>`:''}
+        <label style="display:inline-flex;align-items:center;gap:5px;margin-top:4px;cursor:pointer;user-select:none;font-size:11px;color:${e.avoidable?'#dc2626':'var(--txt3)'}">
+          <input type="checkbox" ${e.avoidable?'checked':''} onchange="toggleAvoidable(${e.id},this.checked)" style="accent-color:#dc2626;width:13px;height:13px;cursor:pointer">
+          avoidable
+        </label>
       </div>
       <div class="expense-amt">
         <div class="expense-eur">${fmtEur(e.amtEur)}</div>
@@ -1511,16 +1513,6 @@ async function deleteExpense(id) {
 // ── EDIT MODAL ────────────────────────────────────────────────
 let _editingId = null;
 
-function setEditAvoidable(val) {
-  const ua = document.getElementById('e-unavoid-btn');
-  const av = document.getElementById('e-avoid-btn');
-  if (ua) ua.className = 'avoid-btn' + (!val ? ' active-unavoid' : '');
-  if (av) av.className = 'avoid-btn' + (val ? ' active-avoid' : '');
-  if (ua) ua.dataset.val = val ? '' : '1';
-  // store on button for reading later
-  if (av) av.dataset.active = val ? '1' : '';
-}
-
 function openEditModal(id) {
   // Close bar detail modal if open (it has higher z-index)
   const barModal = document.getElementById('bar-detail-modal');
@@ -1541,7 +1533,6 @@ function openEditModal(id) {
   document.getElementById('e-notes').value = e.notes || '';
   document.getElementById('e-qty').value = e.qty || '';
   document.getElementById('e-unit-price').value = e.unitPrice || '';
-  setEditAvoidable(e.avoidable === true);
 
   // Reset repeat panel
   const chk = document.getElementById('e-repeat-chk');
@@ -1616,7 +1607,6 @@ async function saveEdit() {
   if (!date) { toast('Please select a date'); return; }
 
   const catId = document.getElementById('e-cat').value;
-  const avoidable = document.getElementById('e-avoid-btn')?.dataset.active === '1';
   state.expenses[idx] = {
     ...state.expenses[idx],
     name,
@@ -1630,7 +1620,7 @@ async function saveEdit() {
     isLoanEMI: catId === 'loans',
     originalAmt: parseFloat(amtEur.toFixed(4)),
     originalCur: 'EUR',
-    avoidable,
+    // avoidable preserved from existing expense — toggled inline via checkbox
   };
 
   // Handle repeat — create new entries for future months
@@ -1982,6 +1972,7 @@ function renderHabits() {
   const curAvoidPct = cur.total > 0 ? Math.round((cur.avoidAmt/cur.total)*100) : 0;
 
   // Untagged count
+  // Untagged = old expenses loaded from sheet before this feature existed (avoidable===undefined)
   const untaggedCount = state.expenses.filter(e => e.avoidable === undefined || e.avoidable === null).length;
 
   // Stacked bar chart
