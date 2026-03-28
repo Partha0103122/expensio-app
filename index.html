@@ -1762,20 +1762,28 @@ function renderAnalytics() {
     </div>`;
   }).join('') : '';
 
-  // 12-month overview
+  // 12-month overview — window spans from 11 months ago to the latest expense month (or current, whichever is later)
   const now12 = new Date();
+  const nowYM = `${now12.getFullYear()}-${String(now12.getMonth()+1).padStart(2,'0')}`;
+  const allMonths = [...new Set(state.expenses.map(e => e.date.slice(0,7)))].sort();
+  const latestYM = allMonths.length ? allMonths[allMonths.length-1] : nowYM;
+  const endYM = latestYM > nowYM ? latestYM : nowYM;
+  const [endY, endM] = endYM.split('-').map(Number);
+  // Build 12-month window ending at endYM
   const monthlyData = [];
   for (let i = 11; i >= 0; i--) {
-    const d = new Date(now12.getFullYear(), now12.getMonth() - i, 1);
+    const d = new Date(endY, endM - 1 - i, 1);
     const mStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     const mExps = state.expenses.filter(e=>e.date.startsWith(mStr));
     const mTotal = mExps.reduce((a,e)=>a+e.amtEur,0);
     const mLoan = mExps.filter(e=>e.isLoanEMI).reduce((a,e)=>a+e.amtEur,0);
+    const isFuture = mStr > nowYM;
     monthlyData.push({
-      label: d.toLocaleDateString('en',{month:'short'}),
+      label: d.toLocaleDateString('en',{month:'short'}) + (isFuture ? ` '${String(d.getFullYear()).slice(2)}` : ''),
       fullLabel: d.toLocaleDateString('en',{month:'long',year:'numeric'}),
       total: mTotal, loan: mLoan, ids: mExps.map(e=>e.id),
-      isCurrent: d.getMonth()===now12.getMonth() && d.getFullYear()===now12.getFullYear()
+      isCurrent: mStr === nowYM,
+      isFuture,
     });
   }
   const maxMonthly = Math.max(...monthlyData.map(d=>d.total), 1);
@@ -1785,15 +1793,18 @@ function renderAnalytics() {
     const nonLoanPct = totalPct - loanPct;
     const _ids = JSON.stringify(d.ids||[]);
     const _title = (d.fullLabel||d.label).replace(/'/g,"\\'");
+    const labelStyle = d.isCurrent ? 'color:var(--accent);font-weight:600' : d.isFuture ? 'color:var(--txt2);font-style:italic' : '';
+    const barColor1 = d.isFuture ? '#93c5fd' : '#2563eb';
+    const barColor2 = d.isFuture ? '#67e8f9' : '#0891b2';
     return `<div class="bar-row" onclick="openBarDetail('${_title}',${_ids})" style="cursor:pointer">
-      <div class="bar-label" style="${d.isCurrent?'color:var(--accent);font-weight:600':''}">${d.label}${d.isCurrent?' ◂':''}</div>
+      <div class="bar-label" style="${labelStyle}">${d.label}${d.isCurrent?' ◂':''}</div>
       <div class="bar-track" style="${d.total>0?'background:rgba(0,0,0,0.06)':''}">
-        <div style="display:flex;height:100%;border-radius:5px;overflow:hidden;width:${totalPct}%">
-          <div style="flex:${nonLoanPct};background:#2563eb;min-width:${d.total-d.loan>0?3:0}px"></div>
-          <div style="flex:${loanPct};background:#0891b2;min-width:${d.loan>0?3:0}px"></div>
+        <div style="display:flex;height:100%;border-radius:5px;overflow:hidden;width:${totalPct}%${d.isFuture?';opacity:0.7':''}">
+          <div style="flex:${nonLoanPct};background:${barColor1};min-width:${d.total-d.loan>0?3:0}px"></div>
+          <div style="flex:${loanPct};background:${barColor2};min-width:${d.loan>0?3:0}px"></div>
         </div>
       </div>
-      <div class="bar-val">${d.total>0?fmtEur(d.total):'-'}</div>
+      <div class="bar-val" style="${d.isFuture?'font-style:italic;color:var(--txt3)':''}">${d.total>0?fmtEur(d.total):'-'}</div>
     </div>`;
   }).join('');
 
